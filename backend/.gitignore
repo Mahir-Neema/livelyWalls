@@ -1,0 +1,13 @@
+.env# Go build artifacts
+*.exe
+*.out
+*.test
+
+# Environment files
+.env
+
+# Logs
+*.log
+
+# Dependency directories
+/vendor/

@@ -1,0 +1,97 @@
+[
+  {
+    "id": "example1",
+    "photos": ["/example1.jpeg"],
+    "propertyType": "Flat",
+    "listingType": "Rent",
+    "genderPreference": "No Restrictions",
+    "location": "Koramangala",
+    "rent": 72000,
+    "bedrooms": 4,
+    "bathrooms": 3,
+    "isBrokerListing": true
+  },
+  {
+    "id": "example12",
+    "photos": ["/example2.jpg"],
+    "propertyType": "Flat",
+    "listingType": "Rent",
+    "location": "Indiranagar",
+    "rent": 85000,
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "isBrokerListing": false
+  },
+  {
+    "id": "example3",
+    "photos": ["/example1.jpeg"],
+    "propertyType": "Villa",
+    "listingType": "Rent",
+    "genderPreference": "No Restrictions",
+    "location": "Whitefield",
+    "rent": 120000,
+    "bedrooms": 5,
+    "bathrooms": 4,
+    "isBrokerListing": true
+  },
+  {
+    "id": "example4",
+    "photos": ["/example3.png"],
+    "propertyType": "Studio",
+    "listingType": "Rent",
+    "genderPreference": "No Restrictions",
+    "location": "Jayanagar",
+    "rent": 15000,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "isBrokerListing": false
+  },
+  {
+    "id": "example5",
+    "photos": ["/example4.jpg"],
+    "propertyType": "Penthouse",
+    "listingType": "Rent",
+    "genderPreference": "No Restrictions",
+    "location": "MG Road",
+    "rent": 150000,
+    "bedrooms": 6,
+    "bathrooms": 5,
+    "isBrokerListing": true
+  },
+  {
+    "id": "example6",
+    "photos": ["/example5.jpg"],
+    "propertyType": "Flat",
+    "listingType": "Rent",
+    "genderPreference": "No Restrictions",
+    "location": "HSR Layout",
+    "rent": 50000,
+    "bedrooms": 2,
+    "bathrooms": 2,
+    "isBrokerListing": false
+  },
+  {
+    "id": "example7",
+    "photos": ["/example7.jpg"],
+    "propertyType": "Flat",
+    "listingType": "Flatmate",
+    "genderPreference": "No Restrictions",
+    "location": "Bellandur",
+    "rent": 25000,
+    "bedrooms": 3,
+    "bathrooms": 3,
+    "isBrokerListing": false
+  },
+  {
+    "id": "example8",
+    "photos": ["/example8.jpg"],
+    "propertyType": "Duplex",
+    "listingType": "Rent",
+    "genderPreference": "No Restrictions",
+    "location": "Sarjapur Road",
+    "rent": 90000,
+    "bedrooms": 4,
+    "bathrooms": 3,
+    "isBrokerListing": true
+  }
+]
