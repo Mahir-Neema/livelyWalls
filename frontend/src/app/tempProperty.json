@@ -72,7 +72,7 @@
   },
   {
     "id": "example7",
-    "photos": ["/example7.jpg"],
+    "photos": ["/example7.jpg","/example9.jpg"],
     "propertyType": "Flat",
     "listingType": "Flatmate",
     "genderPreference": "No Restrictions",
@@ -84,7 +84,7 @@
   },
   {
     "id": "example8",
-    "photos": ["/example8.jpg"],
+    "photos": ["/example8.jpg","/example5.jpg"],
     "propertyType": "Duplex",
     "listingType": "Rent",
     "genderPreference": "No Restrictions",
