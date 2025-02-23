@@ -9,10 +9,11 @@
     "rent": 72000,
     "bedrooms": 4,
     "bathrooms": 3,
-    "isBrokerListing": true
+    "isBrokerListing": true,
+    "isVegetarianPreferred": true
   },
   {
-    "id": "example12",
+    "id": "example2",
     "photos": ["/example2.jpg"],
     "propertyType": "Flat",
     "listingType": "Rent",
@@ -20,7 +21,8 @@
     "rent": 85000,
     "bedrooms": 3,
     "bathrooms": 2,
-    "isBrokerListing": false
+    "isBrokerListing": false,
+    "isVegetarianPreferred": false
   },
   {
     "id": "example3",
@@ -32,7 +34,8 @@
     "rent": 120000,
     "bedrooms": 5,
     "bathrooms": 4,
-    "isBrokerListing": true
+    "isBrokerListing": true,
+    "isVegetarianPreferred": false
   },
   {
     "id": "example4",
@@ -44,7 +47,8 @@
     "rent": 15000,
     "bedrooms": 1,
     "bathrooms": 1,
-    "isBrokerListing": false
+    "isBrokerListing": false,
+    "isVegetarianPreferred": false
   },
   {
     "id": "example5",
@@ -56,7 +60,8 @@
     "rent": 150000,
     "bedrooms": 6,
     "bathrooms": 5,
-    "isBrokerListing": true
+    "isBrokerListing": true,
+    "isVegetarianPreferred": false
   },
   {
     "id": "example6",
@@ -68,7 +73,8 @@
     "rent": 50000,
     "bedrooms": 2,
     "bathrooms": 2,
-    "isBrokerListing": false
+    "isBrokerListing": false,
+    "isVegetarianPreferred": false
   },
   {
     "id": "example7",
@@ -80,7 +86,8 @@
     "rent": 25000,
     "bedrooms": 3,
     "bathrooms": 3,
-    "isBrokerListing": false
+    "isBrokerListing": false,
+    "isVegetarianPreferred": true
   },
   {
     "id": "example8",
@@ -92,6 +99,7 @@
     "rent": 90000,
     "bedrooms": 4,
     "bathrooms": 3,
-    "isBrokerListing": true
+    "isBrokerListing": true,
+    "isVegetarianPreferred": false
   }
 ]

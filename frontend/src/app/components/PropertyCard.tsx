@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import styles from "./PropertyCard.module.css"; 
+import styles from "./PropertyCard.module.css";
 import { FaSackDollar } from "react-icons/fa6";
+import { CgProfile } from "react-icons/cg";
+import { PiPlantFill } from "react-icons/pi";
 import { useRouter } from "next/navigation";
 import { Property } from "@/models/Property";
 
@@ -22,10 +24,12 @@ function PropertyCard({ property }: PropertyCardProps) {
     bedrooms: 4,
     bathrooms: 3,
     isBrokerListing: true,
+    isVegetarianPreferred: true,
   };
 
   const currentProperty = property || placeholderProperty;
   const [isBrokerageHovered, setBrokerageHovered] = useState(false);
+  const [isVegetarianHovered, setVegetarianHovered] = useState(false);
   const router = useRouter();
 
   const handleCardClick = () => {
@@ -55,23 +59,46 @@ function PropertyCard({ property }: PropertyCardProps) {
           </h3>
         </div>
 
-        {/* Broker Listing Icon */}
-        {currentProperty.isBrokerListing ? (
+        {/* Broker/Owner Listing Icon */}
+        <div
+          className="absolute top-2 right-2 p-2 rounded-full text-white bg-gray-900 bg-opacity-75"
+          onMouseEnter={() => setBrokerageHovered(true)}
+          onMouseLeave={() => setBrokerageHovered(false)}
+        >
+          {currentProperty.isBrokerListing ? (
+            <>
+              <FaSackDollar size={14} />
+              {isBrokerageHovered && (
+                <div className="absolute mt-3 px-1 rounded-2xl text-center text-white text-xs -translate-x-12 bg-gray-900 bg-opacity-75">
+                  +Brokerage
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <CgProfile size={16} />
+              {isBrokerageHovered && (
+                <div className="absolute mt-3 px-1 w-max rounded-2xl text-center text-white text-xs -translate-x-16 bg-gray-900 bg-opacity-75">
+                  Owner's Listing
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Vegetarian Icon */}
+        {currentProperty.isVegetarianPreferred && (
           <div
-            className="absolute top-2 right-2 p-2 rounded-full text-white bg-gray-900 bg-opacity-75"
-            onMouseEnter={() => setBrokerageHovered(true)}
-            onMouseLeave={() => setBrokerageHovered(false)}
+            className="absolute top-2 right-12 p-2 rounded-full text-green-500  bg-gray-900 bg-opacity-75"
+            onMouseEnter={() => setVegetarianHovered(true)}
+            onMouseLeave={() => setVegetarianHovered(false)}
           >
-            <FaSackDollar size={14} />
-            {isBrokerageHovered && (
-              <div className="absolute mt-2 px-1 rounded-2xl text-center text-white text-xs -translate-x-12 bg-gray-900 bg-opacity-75">
-                +Brokerage
+            <PiPlantFill size={16} />
+            {isVegetarianHovered && (
+              <div className="absolute mt-3 px-1 w-max rounded-2xl text-center text-white text-xs -translate-x-16 bg-gray-900 bg-opacity-75">
+                Vegetarian Preferred
               </div>
             )}
-          </div>
-        ) : (
-          <div className="absolute bottom-4 left-0 text-sm py-1 opacity-0 bg-gray-900 bg-opacity-50 text-white text-center group-hover:opacity-100 transition-opacity duration-300 w-full">
-            Owner's Listing
           </div>
         )}
 

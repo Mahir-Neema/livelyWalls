@@ -10,4 +10,5 @@ export interface Property {
   bedrooms: number,
   bathrooms: number,
   isBrokerListing: boolean,
+  isVegetarianPreferred: boolean,
 }
