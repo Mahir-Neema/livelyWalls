@@ -1,4 +1,4 @@
-// src/redux/slices/propertySlice.tsx
+// lib/features/property/propertySlice.tsx
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Property } from '../../../models/Property';

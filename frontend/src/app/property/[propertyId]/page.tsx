@@ -1,42 +1,46 @@
+"use client";
 
-interface PropertyDetailPageProps {
-  params: {
-    propertyId: string;
-  };
-}
+import { useSearchParams } from "next/navigation";
 
-const PropertyDetailPage = async ({ params }: PropertyDetailPageProps) => { // Mark component as async for data fetching
-  const { propertyId } = params;
+function PropertyDetails() {
+  const searchParams = useSearchParams();
+  const property = searchParams.get("property");
 
-  let property = null; // Initialize as null, handle loading/error states properly in real app
+  const propertyData = property ? JSON.parse(property) : null;
 
-  try {
-    const response = await fetch(`/api/property/${propertyId}`); // Fetch from your API endpoint
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    property = await response.json(); // Parse JSON response and type it as Property (if you have the interface)
-  } catch (error) {
-    console.error("Error fetching property details:", error);
-    return <div>Error loading property details</div>; // Handle error UI gracefully
-  }
-
-
-  if (!property) {
-    return <div>Property not found</div>;
-  }
+  if (!propertyData)
+    return <p className="text-center mt-8 text-gray-500">Loading...</p>;
 
   return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold mb-4">{property.title}</h1>
-      <p className="text-gray-700 mb-2">{property.location}, {property.city}</p>
-      {/* ... Display detailed property information using the fetched 'property' object ... */}
-      <p>Price: ₹{property.price}</p>
-      <p>Bedrooms: {property.bedrooms}</p>
-      <p>Bathrooms: {property.bathrooms}</p>
-      {/* ... and so on ... */}
+    <div className="max-w-3xl mx-auto p-4">
+      <div className="bg-white overflow-hidden">
+        <img
+          src={propertyData.photos[0]}
+          alt="Property Image"
+          className="w-full h-72 object-cover"
+        />
+        <div className="p-4">
+          <h1 className="text-2xl font-bold mb-4">
+            {propertyData.propertyType} for {propertyData.listingType}
+          </h1>
+          <p className="text-gray-700 mb-2">
+            <span className="font-semibold">Location:</span> {propertyData.location}
+          </p>
+          <p className="text-gray-700 mb-2">
+            <span className="font-semibold">Rent:</span> ₹{propertyData.rent}
+          </p>
+          <p className="text-gray-700 mb-2">
+            <span className="font-semibold">Beds:</span> {propertyData.bedrooms}{" "}
+            | <span className="font-semibold">Baths:</span> {propertyData.bathrooms}
+          </p>
+          <p className="text-gray-700">
+            <span className="font-semibold">Listing:</span>{" "}
+            {propertyData.isBrokerListing ? "Broker Listing" : "Owner Listing"}
+          </p>
+        </div>
+      </div>
     </div>
   );
-};
+}
 
-export default PropertyDetailPage;
+export default PropertyDetails;
