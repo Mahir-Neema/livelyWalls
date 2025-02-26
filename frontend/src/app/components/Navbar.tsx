@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState } from "react";
+import Link from "next/link";
 import { IoSearchOutline } from "react-icons/io5";
 import { FaArrowTrendUp } from "react-icons/fa6";
+import { IoCloseSharp } from "react-icons/io5";
+import { FiMenu } from "react-icons/fi";
 
 function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const trendingLocations = ["Green Glen Layout", "WhiteField"];
 
   return (
@@ -19,14 +22,13 @@ function Navbar() {
           </Link>
         </div>
 
-        <div className="flex items-center">
-           {/* Search Input */}
-          <div className="relative mx-4 rounded-full border-gray-300 flex items-center bg-white pr-2">
-            {/* Container for search input with margin */}
+        <div className="flex items-center w-full justify-between md:w-auto">
+          {/* Search Input */}
+          <div className="relative mx-4 rounded-full border-gray-300 flex items-center bg-white pr-2 w-full md:w-auto">
             <input
               type="text"
               placeholder="Search locations..."
-              className="px-4 py-3 rounded-full text-sm w-80 focus:outline-none focus:w-100"
+              className="px-4 py-3 rounded-full text-sm w-full md:w-80 focus:outline-none focus:w-100"
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setIsSearchFocused(false)}
             />
@@ -35,9 +37,8 @@ function Navbar() {
             </div>
 
             {/* Dropdown for search results */}
-            { isSearchFocused &&
-              <ul className="absolute left-0 top-full w-80 bg-white  rounded-md shadow-md z-10 mt-2">
-                {/* Match width to input, absolute position */}
+            {isSearchFocused && (
+              <ul className="absolute left-0 top-full w-full md:w-80 bg-white rounded-md shadow-md z-10 mt-2">
                 {trendingLocations.map((location, index) => (
                   <li
                     key={index}
@@ -50,28 +51,66 @@ function Navbar() {
                   </li>
                 ))}
               </ul>
-            }
+            )}
           </div>
 
-
-            {/* Navigation Links */}
-            <div className="flex space-x-6">
-            <Link href="/popular" className="text-gray-700 hover:text-gray-900 flex items-center"> 
-                <FaArrowTrendUp />
+          {/* Navigation Links */}
+          <div className="hidden md:flex space-x-6">
+            <Link
+              href="/popular"
+              className="text-gray-700 hover:text-gray-900 flex items-center"
+            >
+              <FaArrowTrendUp />
             </Link>
             <Link href="/rent" className="text-gray-700 hover:text-gray-900">
-                Rent
+              Rent
             </Link>
-            <Link href="/sale" className="text-gray-700 hover:text-gray-900">
-                Sale
+            <Link
+              href="/addproperty"
+              className="text-gray-700 hover:text-gray-900"
+            >
+              Add Property
             </Link>
             <Link href="/login" className="text-gray-700 hover:text-gray-900">
-                Login
+              Login
             </Link>
-            <Link href="/signup" className="text-gray-700 hover:text-gray-900">
-                Sign Up
-            </Link>
-            </div>
+          </div>
+
+          {/* Mobile Menu Toggle */}
+          <div className="md:hidden">
+            <button
+              className="text-gray-700 hover:text-gray-900"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              <FiMenu className="text-xl" />
+            </button>
+          </div>
+        </div>
+      </div>
+      <div
+        className={`md:hidden absolute top-0 left-0 bg-gray-100 w-full py-4 mt-4 transition-all duration-300 ease-in-out transform ${
+          isMobileMenuOpen
+            ? "translate-y-0 opacity-100"
+            : "-translate-y-full opacity-0"
+        }`}
+      >
+        <div className="flex flex-col space-y-4 items-center">
+          <IoCloseSharp
+            className="text-gray-700 hover:text-gray-900 text-2xl absolute top-4 right-4"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <Link href="/rent" className="text-gray-700 hover:text-gray-900">
+            Rent
+          </Link>
+          <Link
+            href="/addproperty"
+            className="text-gray-700 hover:text-gray-900"
+          >
+            Add Property
+          </Link>
+          <Link href="/login" className="text-gray-700 hover:text-gray-900">
+            Login
+          </Link>
         </div>
       </div>
     </nav>

@@ -7,7 +7,7 @@ import { useAppSelector } from '../lib/hooks';
 export default function Home() {
   const properties = useAppSelector((state) => state.property.properties);
   if (!properties || properties.length === 0) {
-    return <p>No properties available.</p>;
+    return <p className="flex items-center justify-center text-2xl">Getting Best Properties.</p>;
   }
   return (
       <div className=" items-center justify-items-center font-[family-name:var(--font-geist-sans)]">

@@ -25,6 +25,7 @@ function PropertyCard({ property }: PropertyCardProps) {
     bathrooms: 3,
     isBrokerListing: true,
     isVegetarianPreferred: true,
+    isFamilyPreferred: false,
   };
 
   const currentProperty = property || placeholderProperty;
@@ -44,7 +45,7 @@ function PropertyCard({ property }: PropertyCardProps) {
     >
       <div className="relative overflow-hidden">
         <img
-          src={currentProperty.photos[0]}
+          src={currentProperty.photos.length > 0 ? currentProperty.photos[0] : 'example3.png'}
           alt="Property"
           className="w-60 h-40 object-cover block filter brightness-75 transition-all duration-300 group-hover:brightness-100 group-hover:opacity-100 transform scale-100"
         />
@@ -69,7 +70,7 @@ function PropertyCard({ property }: PropertyCardProps) {
             <>
               <FaSackDollar size={14} />
               {isBrokerageHovered && (
-                <div className="absolute mt-3 px-1 rounded-2xl text-center text-white text-xs -translate-x-12 bg-gray-900 bg-opacity-75">
+                <div className="absolute mt-3 px-2 rounded-2xl text-center text-white text-xs -translate-x-16 bg-gray-900 bg-opacity-75">
                   +Brokerage
                 </div>
               )}
@@ -78,7 +79,7 @@ function PropertyCard({ property }: PropertyCardProps) {
             <>
               <CgProfile size={16} />
               {isBrokerageHovered && (
-                <div className="absolute mt-3 px-1 w-max rounded-2xl text-center text-white text-xs -translate-x-16 bg-gray-900 bg-opacity-75">
+                <div className="absolute mt-3 px-2 w-max rounded-2xl text-center text-white text-xs -translate-x-20 bg-gray-900 bg-opacity-75">
                   Owner's Listing
                 </div>
               )}
@@ -95,7 +96,7 @@ function PropertyCard({ property }: PropertyCardProps) {
           >
             <PiPlantFill size={16} />
             {isVegetarianHovered && (
-              <div className="absolute mt-3 px-1 w-max rounded-2xl text-center text-white text-xs -translate-x-16 bg-gray-900 bg-opacity-75">
+              <div className="absolute mt-3 px-2 w-max rounded-2xl text-center text-white text-xs -translate-x-16 bg-gray-900 bg-opacity-75">
                 Vegetarian Preferred
               </div>
             )}

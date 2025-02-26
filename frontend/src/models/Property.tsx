@@ -11,4 +11,5 @@ export interface Property {
   bathrooms: number,
   isBrokerListing: boolean,
   isVegetarianPreferred: boolean,
+  isFamilyPreferred: boolean
 }
