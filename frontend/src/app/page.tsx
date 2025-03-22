@@ -21,12 +21,14 @@ export default function Home() {
         <div className="**w-full** grid grid-rows-[auto_1fr_auto] items-center justify-items-center min-h-screen px-8 pt-5 pb-20 gap-16 sm:px-20 py-10">
           {" "}
           {/* Added w-full to outer div */}
-          <main className="flex flex-row flex-wrap gap-8 items-center sm:items-start justify-center">
+          <main className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 justify-items-center">
             {/* <PropertyCard/> */}
             {properties.map((property, index) => (
               <PropertyCard key={index} property={property} />
             ))}
           </main>
+
+          
           <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
             <a
               className="flex items-center gap-2 hover:underline hover:underline-offset-4"

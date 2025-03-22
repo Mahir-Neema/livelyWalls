@@ -6,6 +6,7 @@ export interface Property {
   listingType: string,
   genderPreference: string,
   location: string,
+  description: string,
   rent: number,
   bedrooms: number,
   bathrooms: number,

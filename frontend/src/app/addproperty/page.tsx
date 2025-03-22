@@ -21,8 +21,8 @@ const AddProperty = () => {
     city: "",
     state: "",
     zipCode: "",
-    bedrooms: 1,
-    bathrooms: 1,
+    bedrooms: 1, // Default to 1 BHK
+    bathrooms: 1, // Default to 1 bathroom
     areaSqft: 0,
     balconies: 0,
     amenities: [],
@@ -31,7 +31,7 @@ const AddProperty = () => {
     securityDeposit: 0,
     maintenanceCharges: 0,
     leaseTerm: "1 year",
-    photos: [] as File[],
+    photos: [] as string[], // Updated for URLs (string[])
     distancesFromOffices: {} as Record<string, number>,
   });
 
@@ -57,9 +57,11 @@ const AddProperty = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
+      // Convert FileList to array of strings (URLs), or we can leave it as File objects and handle accordingly
+      const fileUrls = Array.from(files).map((file) => URL.createObjectURL(file));
       setFormData((prevData) => ({
         ...prevData,
-        photos: Array.from(files), // Convert FileList to an array
+        photos: fileUrls, // Store URLs for previewing
       }));
     }
   };
@@ -134,6 +136,9 @@ const AddProperty = () => {
               <option value="Apartment">Apartment</option>
               <option value="House">House</option>
               <option value="Studio">Studio</option>
+              <option value="Villa">Villa</option>
+              <option value="Penthouse">Penthouse</option>
+              <option value="Duplex">Duplex</option>
             </select>
           </div>
 
@@ -155,6 +160,47 @@ const AddProperty = () => {
 
         {/* Single Column for Other Fields */}
         <div className="grid grid-cols-1 gap-6">
+          {/* Bedrooms (BHK) */}
+          <div>
+            <label htmlFor="bedrooms" className="block text-sm font-semibold text-gray-700">
+              Bedrooms (BHK)
+            </label>
+            <select
+              name="bedrooms"
+              id="bedrooms"
+              value={formData.bedrooms}
+              onChange={handleChange}
+              className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+              <option value={1}>1 BHK</option>
+              <option value={2}>2 BHK</option>
+              <option value={3}>3 BHK</option>
+              <option value={4}>4 BHK</option>
+              <option value={5}>5 BHK</option>
+              <option value={6}>6 BHK</option>
+            </select>
+          </div>
+
+          {/* Bathrooms */}
+          <div>
+            <label htmlFor="bathrooms" className="block text-sm font-semibold text-gray-700">
+              Bathrooms
+            </label>
+            <select
+              name="bathrooms"
+              id="bathrooms"
+              value={formData.bathrooms}
+              onChange={handleChange}
+              className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+              <option value={1}>1 Bathroom</option>
+              <option value={2}>2 Bathrooms</option>
+              <option value={3}>3 Bathrooms</option>
+              <option value={4}>4 Bathrooms</option>
+              <option value={5}>5 Bathrooms</option>
+            </select>
+          </div>
+
           {/* Is Vegetarian Preferred */}
           <div className="flex items-center space-x-3">
             <input
@@ -215,6 +261,15 @@ const AddProperty = () => {
               multiple
               className="w-full mt-2 p-3 border border-gray-300 rounded-md"
             />
+            <div className="mt-4">
+              {formData.photos.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {formData.photos.map((photo, index) => (
+                    <img key={index} src={photo} alt={`Property Photo ${index + 1}`} className="w-full h-32 object-cover rounded-md" />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
