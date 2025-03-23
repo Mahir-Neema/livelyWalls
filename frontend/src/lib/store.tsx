@@ -1,7 +1,8 @@
-// src/redux/store.tsx
+// lib/store.tsx
 
 import { configureStore } from '@reduxjs/toolkit';
 import propertyReducer from './features/property/propertySlice';
+import authReducer from './features/auth/authSlice'; 
 
 // const store = configureStore({
 //   reducer: {
@@ -13,6 +14,7 @@ export const makeStore = () => {
   return configureStore({
     reducer: {
       property: propertyReducer, // Reducer for property data
+      auth: authReducer,
     }
   })
 }

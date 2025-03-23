@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+
+	"google.golang.org/api/idtoken"
 )
 
 type Response struct {
@@ -23,4 +26,29 @@ func WriteErrorResponse(w http.ResponseWriter, errorMessage string, statusCode i
 	w.WriteHeader(statusCode)
 	response := Response{Success: false, Error: errorMessage}
 	json.NewEncoder(w).Encode(response)
+}
+
+func VerifyGoogleToken(token string) (map[string]interface{}, error) {
+	// Replace with your Google client ID
+	clientID := "YOUR_GOOGLE_CLIENT_ID"
+
+	// Validate the token using Google's ID token verifier
+	payload, err := idtoken.Validate(context.Background(), token, clientID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract user info from the token payload
+	userInfo := make(map[string]interface{})
+	if email, ok := payload.Claims["email"]; ok {
+		userInfo["email"] = email
+	}
+	if name, ok := payload.Claims["name"]; ok {
+		userInfo["name"] = name
+	}
+	if picture, ok := payload.Claims["picture"]; ok {
+		userInfo["picture"] = picture
+	}
+
+	return userInfo, nil
 }

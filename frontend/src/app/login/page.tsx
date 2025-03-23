@@ -1,58 +1,83 @@
-'use client';
+"use client";
+import { useState } from "react";
+import { auth, GoogleAuthProvider, signInWithPopup } from "../../lib/firebase";
+import { FaGoogle } from "react-icons/fa";
+import { useAppDispatch } from "../../lib/hooks"; // Import the typed dispatch hook
+import { loginSuccess } from "../../lib/features/auth/authSlice"; // Import the loginSuccess action
+// import { useRouter } from 'next/navigation';
 
-import React, { useState } from 'react';
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
-
-const Login: React.FC = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleLogin = (response: CredentialResponse) => {
-    if (response.credential) {
-      const tokenId = response.credential;
-      // Send the token to the Go backend for verification
-      fetch('/api/auth/google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token: tokenId }),
-      })
-        .then((res) => res.json())
-        .then((data) => console.log('Logged in user data:', data))
-        .catch((error) => console.error('Error logging in:', error));
-    }
-  };
-
-  const handleError = () => {
-    console.log('Login Failed');
-  };
+const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  // const router = useRouter(); 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError('Both username and password are required.');
+    
+    if (!email || !password) {
+      setError("Both username and password are required.");
       return;
     }
-    // Handle normal login (username/password)
-    fetch('/api/auth/login', {
-      method: 'POST',
+    
+    setLoading(true);
+
+    // const backendUrl = process.env.BACKEND_URL || "";
+  
+    fetch(`http://localhost:8080/auth/login`, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to login");
+        }
+        return res.json();
+      })
       .then((data) => {
-        console.log('Logged in user data:', data);
-        // Clear error if login is successful
-        setError('');
+        setLoading(false);
+        console.log("Logged in user data:", data);
+        setError(""); // Clear error if successful
+
+        // Store the token in localStorage
+        if (data.success && data.data.token) {
+          localStorage.setItem("authToken", data.data.token);
+          console.log("Token stored in localStorage:", localStorage.getItem("authToken"));
+
+          // Dispatch the loginSuccess action to update Redux state
+          dispatch(loginSuccess(data.data.token));
+
+          // Optionally, redirect the user
+          // router.push('/');
+        } else {
+          setError("Login successful, but token not received.");
+          console.error("Token missing in login response:", data);
+        }
       })
       .catch((error) => {
-        setError('Login failed, please try again.');
-        console.error('Error logging in:', error);
+        setLoading(false);
+        setError("Login failed, please try again.");
+        console.error("Error logging in:", error);
       });
+  };
+
+  // Google login handler
+  const handleGoogleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log("Google login successful:", user);
+      
+    } catch (error) {
+      setError("Google login failed, please try again.");
+      console.error("Error with Google login:", error);
+    }
   };
 
   return (
@@ -63,19 +88,29 @@ const Login: React.FC = () => {
         {/* Normal Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Email
+            </label>
             <input
               type="text"
               id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Password
+            </label>
             <input
               type="password"
               id="password"
@@ -90,20 +125,25 @@ const Login: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-2 px-4 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700"
+            className={`w-full py-2 px-4 ${
+              loading ? "bg-gray-400" : "bg-blue-600"
+            } text-white font-bold rounded-md hover:bg-blue-700`}
+            disabled={loading}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
         {/* Google Login Button */}
-        <div className="mt-6">
-          <GoogleLogin
-            onSuccess={handleLogin}
-            onError={handleError}
-            useOneTap
-            containerProps={{ className: "w-full bg-red-500 text-white rounded-md hover:bg-red-600" }}
-          />
+        <div className="mt-4">
+          <button
+            onClick={handleGoogleLogin}
+            className="w-full py-2 px-4 bg-blue-50 rounded-md hover:bg-blue-100 border border-blue-200 flex items-center justify-center gap-2"
+            aria-label="Login with Google"
+          >
+            <FaGoogle />
+            Sign in with Google
+          </button>
         </div>
       </div>
     </div>

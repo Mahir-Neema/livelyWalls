@@ -1,16 +1,40 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { IoSearchOutline } from "react-icons/io5";
 import { FaArrowTrendUp } from "react-icons/fa6";
 import { IoCloseSharp } from "react-icons/io5";
 import { FiMenu } from "react-icons/fi";
+import { useAppSelector, useAppDispatch } from "@/lib/hooks";
+import { logout } from "@/lib/features/auth/authSlice"; 
+import { setTokenFromStorage } from '@/lib/features/auth/authSlice';
+// import { useRouter } from 'next/navigation'; 
 
 function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const trendingLocations = ["Green Glen Layout", "WhiteField"];
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const dispatch = useAppDispatch();
+  // const router = useRouter();
+
+
+    useEffect(() => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        dispatch(setTokenFromStorage(token));
+      } else {
+        console.log("No token found in localStorage");
+      }
+    }, [dispatch]);
+
+
+  const handleLogout = () => {
+    dispatch(logout()); // Dispatch the logout action
+    localStorage.removeItem("authToken"); // Remove the token from localStorage
+    // router.push('/login'); 
+  };
 
   return (
     <nav className="bg-gray-100 py-4 px-6 sticky top-0 z-10">
@@ -71,9 +95,15 @@ function Navbar() {
             >
               Add Property
             </Link>
-            <Link href="/login" className="text-gray-700 hover:text-gray-900">
-              Login
-            </Link>
+            {isAuthenticated ? (
+              <button onClick={handleLogout} className="text-gray-700 hover:text-gray-900 cursor-pointer">
+                Logout
+              </button>
+            ) : (
+              <Link href="/login" className="text-gray-700 hover:text-gray-900">
+                Login
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -108,9 +138,15 @@ function Navbar() {
           >
             Add Property
           </Link>
-          <Link href="/login" className="text-gray-700 hover:text-gray-900">
-            Login
-          </Link>
+          {isAuthenticated ? (
+              <button onClick={handleLogout} className="text-gray-700 hover:text-gray-900 cursor-pointer">
+                Logout
+              </button>
+            ) : (
+              <Link href="/login" className="text-gray-700 hover:text-gray-900">
+                Login
+              </Link>
+            )}
         </div>
       </div>
     </nav>
