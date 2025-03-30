@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Property struct {
@@ -21,6 +22,7 @@ type Property struct {
 	GenderPreference      string             `json:"genderPreference" bson:"genderPreference"` // Male, Female, Any
 	PropertyType          string             `json:"propertyType" bson:"propertyType"`         // "Flat", "Apartment", "House", "Studio"
 	ListingType           string             `json:"listingType" bson:"listingType"`           // "Rent", "Sale"
+	Location              string             `json:"location" bson:"location"`                 // e.g., "Bangalore", "Delhi"
 	SocietyName           string             `json:"societyName" bson:"societyName"`
 	StreetAddress         string             `json:"streetAddress" bson:"streetAddress"`
 	Area                  string             `json:"area" bson:"area"`
@@ -43,6 +45,8 @@ type Property struct {
 	DistancesFromOffices  map[string]float64 `json:"distancesFromOffices" bson:"distancesFromOffices"` // e.g., {"flipkart": 1.5, "google": 2.0}
 	CreatedAt             time.Time          `bson:"createdAt"`
 	UpdatedAt             time.Time          `bson:"updatedAt"`
+	Views                 int                `json:"views" bson:"views"`
+	Link                  string             `json:"link" bson:"link"`
 }
 
 func GetPropertyCollection() *mongo.Collection {
@@ -69,6 +73,37 @@ func GetAllProperties() ([]*Property, error) {
 	if err := cursor.Err(); err != nil {
 		return nil, err
 	}
+	return properties, nil
+}
+
+// GetTopProperties retrieves the top properties based on the number of views
+func GetTopProperties(limit int) ([]*Property, error) {
+	collection := GetPropertyCollection()
+
+	// Query to find properties sorted by views in descending order
+	cursor, err := collection.Find(
+		context.Background(),
+		bson.M{}, // Empty filter to match all properties
+		options.Find().SetSort(bson.M{"views": -1}).SetLimit(int64(limit)), // Sort by 'views' descending and limit the number of results
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+
+	var properties []*Property
+	for cursor.Next(context.Background()) {
+		var property Property
+		if err := cursor.Decode(&property); err != nil {
+			return nil, err
+		}
+		properties = append(properties, &property)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
 	return properties, nil
 }
 
@@ -128,6 +163,12 @@ func SearchProperties(filters map[string]interface{}) ([]*Property, error) {
 	if city, ok := filters["city"].(string); ok && city != "" {
 		query["city"] = bson.M{"$regex": primitive.Regex{Pattern: city, Options: "i"}} // Case-insensitive search
 	}
+
+	// location filter
+	if location, ok := filters["location"].(string); ok && location != "" {
+		query["location"] = bson.M{"$regex": primitive.Regex{Pattern: location, Options: "i"}} // Case-insensitive search
+	}
+
 	if propertyType, ok := filters["propertyType"].(string); ok && propertyType != "" {
 		query["propertyType"] = propertyType
 	}

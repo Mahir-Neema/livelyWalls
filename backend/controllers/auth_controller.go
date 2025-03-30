@@ -11,35 +11,8 @@ import (
 
 // GoogleSignIn - Placeholder, needs Clerk integration or actual Google OAuth logic
 func GoogleSignIn(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		utils.WriteErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
-	// Parse token from request
-	var payload struct {
-		Token string `json:"token"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		utils.WriteErrorResponse(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
-	// Verify token using Google OAuth2 library (actual implementation required)
-	userInfo, err := utils.VerifyGoogleToken(payload.Token)
-	if err != nil {
-		utils.WriteErrorResponse(w, "Invalid Google token", http.StatusUnauthorized)
-		return
-	}
-
-	// Process or create user in database based on verified token info
-	// Placeholder response
-	utils.WriteSuccessResponse(w, map[string]interface{}{
-		"message": "Google sign-in successful",
-		"user":    userInfo,
-	}, http.StatusOK)
 }
-
 
 // Signup handles user registration
 func Signup(w http.ResponseWriter, r *http.Request) {

@@ -13,6 +13,7 @@ func RegisterRoutes(r *mux.Router) {
 
 	// Public Property Routes - REGISTER THESE DIRECTLY ON THE MAIN ROUTER 'r'
 	r.HandleFunc("/api/properties", controllers.GetProperties).Methods("GET")        // Public GET /api/properties
+	r.HandleFunc("/api/properties/top", controllers.GetTopProperties).Methods("GET") // Public GET /api/properties/top
 	r.HandleFunc("/api/properties/{id}", controllers.GetPropertyByID).Methods("GET") // Public GET /api/properties/{id}
 
 	api := r.PathPrefix("/api").Subrouter()

@@ -13,8 +13,20 @@ import (
 func GetProperties(w http.ResponseWriter, r *http.Request) {
 	properties, err := models.GetAllProperties()
 	if err != nil {
-		utils.Logger.Printf("Error fetching properties: %v", err) // Correct: Printf is a standard method
+		utils.Logger.Printf("Error fetching properties: %v", err)
 		utils.WriteErrorResponse(w, "Failed to fetch properties", http.StatusInternalServerError)
+		return
+	}
+	utils.WriteSuccessResponse(w, properties, http.StatusOK)
+}
+
+// GetTopProperties retrieves the top properties based on views
+func GetTopProperties(w http.ResponseWriter, r *http.Request) {
+	limit := 8
+	properties, err := models.GetTopProperties(limit)
+	if err != nil {
+		utils.Logger.Printf("Error fetching top properties: %v", err)
+		utils.WriteErrorResponse(w, "Failed to fetch top properties", http.StatusInternalServerError)
 		return
 	}
 	utils.WriteSuccessResponse(w, properties, http.StatusOK)

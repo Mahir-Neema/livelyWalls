@@ -33,7 +33,7 @@ func IsValidPropertyType(propertyType string) bool {
 }
 
 func IsValidListingType(listingType string) bool {
-	validTypes := []string{"Rent", "Sale"}
+	validTypes := []string{"Rent", "Sale", "Flatmate", "Lease"}
 	for _, t := range validTypes {
 		if t == listingType {
 			return true
