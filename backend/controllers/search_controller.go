@@ -10,23 +10,28 @@ import (
 )
 
 func SearchProperties(w http.ResponseWriter, r *http.Request) {
-	var filters map[string]interface{} // Allow flexible filtering
+	var filters map[string]interface{} 
 	if err := json.NewDecoder(r.Body).Decode(&filters); err != nil {
 		utils.WriteErrorResponse(w, "Invalid filter parameters", http.StatusBadRequest)
 		return
 	}
 
-	// Extract city from filters (if present) to track popular places
 	if city, ok := filters["city"].(string); ok && city != "" {
 		ctx := r.Context()
-		err := services.IncrementSearchedPlaceCount(ctx, city) // Increment search count for the city
+		err := services.IncrementSearchedPlaceCount(ctx, city) 
 		if err != nil {
-			utils.Logger.Printf("Error incrementing searched place count in Redis: %v", err) // Non-critical, log error but continue search
+			utils.Logger.Printf("Error incrementing searched place count in Redis: %v", err)
 		}
 	}
 
-	// ... (Rest of the SearchProperties logic - caching, DB query, etc. remains mostly the same)
-	// ... (Existing caching logic - cacheKey, Redis Get, DB Search, Redis Set)
+	if location, ok := filters["location"].(string); ok && location != "" {
+		ctx := r.Context()
+		err := services.IncrementSearchedPlaceCount(ctx, location)
+		if err != nil {
+			utils.Logger.Printf("Error incrementing searched place count in Redis: %v", err)
+		}
+	}
+
 
 	properties, err := models.SearchProperties(filters)
 	if err != nil {

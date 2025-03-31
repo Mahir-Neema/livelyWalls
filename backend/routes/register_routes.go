@@ -17,14 +17,13 @@ func RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/api/properties/top", controllers.GetTopProperties).Methods("GET")
 	r.HandleFunc("/api/properties/{id}", controllers.GetPropertyByID).Methods("GET")
 
-	
 	api := r.PathPrefix("/api").Subrouter()
 	api.Use(middlewares.AuthMiddleware)
 
 	RegisterPropertyRoutes(api)
 	RegisterChatRoutes(api)
-	// Example of Role-Based route (Admin only can access admin routes under /api/admin prefix if you create admin controllers/routes)
+
 	// adminAPI := api.PathPrefix("/admin").Subrouter()
-	// adminAPI.Use(middlewares.RoleMiddleware([]string{"admin"})) // Example: Admin role required
+	// adminAPI.Use(middlewares.RoleMiddleware([]string{"admin"}))
 	// RegisterAdminRoutes(adminAPI)
 }
