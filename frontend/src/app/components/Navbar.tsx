@@ -7,33 +7,78 @@ import { FaArrowTrendUp } from "react-icons/fa6";
 import { IoCloseSharp } from "react-icons/io5";
 import { FiMenu } from "react-icons/fi";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
-import { logout } from "@/lib/features/auth/authSlice"; 
-import { setTokenFromStorage } from '@/lib/features/auth/authSlice';
-// import { useRouter } from 'next/navigation'; 
+import { logout } from "@/lib/features/auth/authSlice";
+import { setTokenFromStorage } from "@/lib/features/auth/authSlice";
+// import { useRouter } from 'next/navigation';
 
 function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const trendingLocations = ["Green Glen Layout", "WhiteField"];
+  const [trendingLocations, setTrendingLocations] = useState([
+    "Green Glen Layout",
+    "WhiteField",
+  ]);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const dispatch = useAppDispatch();
   // const router = useRouter();
 
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      dispatch(setTokenFromStorage(token));
+    } else {
+      console.log("No token found in localStorage");
+    }
+  }, [dispatch]);
 
-    useEffect(() => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        dispatch(setTokenFromStorage(token));
-      } else {
-        console.log("No token found in localStorage");
+  useEffect(() => {
+    const fetchTrendingLocations = async () => {
+      try {
+        const storedData = localStorage.getItem("trendingLocations");
+        const storedTimestamp = localStorage.getItem(
+          "trendingLocationsTimestamp"
+        );
+        const now = Date.now();
+        const twoHours = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+
+        // If data exists and is less than 2 hours old, use it
+        if (
+          storedData &&
+          storedTimestamp &&
+          now - parseInt(storedTimestamp) < twoHours
+        ) {
+          console.log("Using cached trending locations");
+          setTrendingLocations(JSON.parse(storedData));
+          return;
+        }
+
+        const response = await fetch(
+          "https://livelywalls.onrender.com/search/popular-places"
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch trending locations");
+        }
+        const Responsedata = await response.json();
+        setTrendingLocations(Responsedata.data || []);
+
+        localStorage.setItem(
+          "trendingLocations",
+          JSON.stringify(Responsedata.data || [])
+        );
+        localStorage.setItem("trendingLocationsTimestamp", now.toString());
+      } catch (error) {
+        console.error("Error fetching trending locations:", error);
+        setTrendingLocations(["Green Glen Layout", "WhiteField"]);
       }
-    }, [dispatch]);
+    };
 
+    fetchTrendingLocations();
+  }, []);
 
   const handleLogout = () => {
     dispatch(logout()); // Dispatch the logout action
     localStorage.removeItem("authToken"); // Remove the token from localStorage
-    // router.push('/login'); 
+    // router.push('/login');
   };
 
   return (
@@ -64,7 +109,8 @@ function Navbar() {
             {isSearchFocused && (
               <ul className="absolute left-0 top-full w-full md:w-80 bg-white rounded-md shadow-md z-10 mt-2">
                 {trendingLocations.map((location, index) => (
-                  <li
+                  <Link
+                    href={`/search?location=${location}`}
                     key={index}
                     className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
                   >
@@ -72,7 +118,7 @@ function Navbar() {
                       <FaArrowTrendUp />
                     </div>
                     {location}
-                  </li>
+                  </Link>
                 ))}
               </ul>
             )}
@@ -96,7 +142,10 @@ function Navbar() {
               Add Property
             </Link>
             {isAuthenticated ? (
-              <button onClick={handleLogout} className="text-gray-700 hover:text-gray-900 cursor-pointer">
+              <button
+                onClick={handleLogout}
+                className="text-gray-700 hover:text-gray-900 cursor-pointer"
+              >
                 Logout
               </button>
             ) : (
@@ -139,14 +188,17 @@ function Navbar() {
             Add Property
           </Link>
           {isAuthenticated ? (
-              <button onClick={handleLogout} className="text-gray-700 hover:text-gray-900 cursor-pointer">
-                Logout
-              </button>
-            ) : (
-              <Link href="/login" className="text-gray-700 hover:text-gray-900">
-                Login
-              </Link>
-            )}
+            <button
+              onClick={handleLogout}
+              className="text-gray-700 hover:text-gray-900 cursor-pointer"
+            >
+              Logout
+            </button>
+          ) : (
+            <Link href="/login" className="text-gray-700 hover:text-gray-900">
+              Login
+            </Link>
+          )}
         </div>
       </div>
     </nav>

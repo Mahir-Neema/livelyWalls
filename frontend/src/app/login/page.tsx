@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { auth, GoogleAuthProvider, signInWithPopup } from "../../lib/firebase";
+// import { auth, GoogleAuthProvider, signInWithPopup } from "../../lib/firebase";
 import { FaGoogle } from "react-icons/fa";
 import { useAppDispatch } from "../../lib/hooks"; // Import the typed dispatch hook
 import { loginSuccess } from "../../lib/features/auth/authSlice"; // Import the loginSuccess action
@@ -26,7 +26,7 @@ const Login = () => {
 
     // const backendUrl = process.env.BACKEND_URL || "";
   
-    fetch(`http://localhost:8080/auth/login`, {
+    fetch(`https://livelywalls.onrender.com/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -68,16 +68,16 @@ const Login = () => {
 
   // Google login handler
   const handleGoogleLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      console.log("Google login successful:", user);
+  //   try {
+  //     // const provider = new GoogleAuthProvider();
+  //     // const result = await signInWithPopup(auth, provider);
+  //     const user = result.user;
+  //     console.log("Google login successful:", user);
       
-    } catch (error) {
-      setError("Google login failed, please try again.");
-      console.error("Error with Google login:", error);
-    }
+  //   } catch (error) {
+  //     setError("Google login failed, please try again.");
+  //     console.error("Error with Google login:", error);
+  //   }
   };
 
   return (

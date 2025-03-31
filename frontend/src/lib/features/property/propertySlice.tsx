@@ -1,22 +1,28 @@
 // lib/features/property/propertySlice.tsx
 
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Property } from '../../../models/Property';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { Property } from "../../../models/Property";
 
 interface PropertyState {
   properties: Property[]; // Array of properties
+  topProperties: Property[]; // Top-rated properties
+  popularProperties: Property[]; // Most popular properties
+  searchedProperties: Property[];
   loading: boolean;
   error: string | null;
 }
 
 const initialState: PropertyState = {
   properties: [],
+  topProperties: [],
+  popularProperties: [],
+  searchedProperties: [],
   loading: false,
   error: null,
 };
 
 const propertySlice = createSlice({
-  name: 'property',
+  name: "property",
   initialState,
   reducers: {
     // Set loading state when fetching data
@@ -30,6 +36,18 @@ const propertySlice = createSlice({
     // Set the properties in the state
     setProperties: (state, action: PayloadAction<Property[]>) => {
       state.properties = action.payload;
+    },
+    // Set top properties in the state
+    setTopProperties: (state, action: PayloadAction<Property[]>) => {
+      state.topProperties = action.payload;
+    },
+    // Set popular properties in the state
+    setPopularProperties: (state, action: PayloadAction<Property[]>) => {
+      state.popularProperties = action.payload;
+    },
+    // Set searched properties in the state
+    setSearchedProperties: (state, action: PayloadAction<Property[]>) => {
+      state.searchedProperties = action.payload;
     },
     // Add a new property to the state
     addProperty: (state, action: PayloadAction<Property>) => {
@@ -57,6 +75,9 @@ export const {
   setLoading,
   setError,
   setProperties,
+  setTopProperties,
+  setPopularProperties,
+  setSearchedProperties,
   addProperty,
   updateProperty,
   removeProperty,
