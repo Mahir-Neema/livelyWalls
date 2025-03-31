@@ -24,18 +24,22 @@ func ConnectRedis() {
 
 	RedisEnabled = true
 
-	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       0,
-	})
-
-	_, err := RedisClient.Ping(context.Background()).Result()
+	RedisOptions, err := redis.ParseURL(redisAddr)
 	if err != nil {
-		utils.Logger.Printf("Warning: Redis connection failed: %v. Redis caching and popular places feature will be disabled. Error: %v", err, err) // Log as warning, not fatal
-		RedisEnabled = false                                                                                                                        // Set RedisEnabled flag to false
-		RedisClient = nil                                                                                                                           // Set RedisClient to nil to avoid potential nil pointer dereferences later
-		return                                                                                                                                      // Return, application will continue without Redis
+		utils.Logger.Printf("Error parsing Redis URL: %v. Redis caching and popular places feature will be disabled.", err)
+		RedisEnabled = false
+		RedisClient = nil
+		return
+	}
+
+	RedisClient = redis.NewClient(RedisOptions)
+
+	_, err = RedisClient.Ping(context.Background()).Result()
+	if err != nil {
+		utils.Logger.Printf("Warning: Redis connection failed: %v. Redis caching and popular places feature will be disabled. Error: %v", err, err)
+		RedisEnabled = false
+		RedisClient = nil
+		return
 	}
 	utils.Logger.Println("Connected to Redis!")
 }
@@ -73,17 +77,18 @@ func IncrementSearchedPlaceCount(ctx context.Context, city string) error {
 	return RedisClient.ZIncrBy(ctx, MostSearchedPlacesKey, 1, city).Err()
 }
 
-// GetTopSearchedPlaces retrieves the top N most searched places from Redis Sorted Set.
 func GetTopSearchedPlaces(ctx context.Context, limit int) ([]string, error) {
-	if !RedisEnabled { // Check if Redis is enabled before using
-		return []string{}, nil // Return empty list if Redis is disabled
+	if !RedisEnabled {
+		return []string{}, nil
 	}
 	// ZRevRange returns elements in reverse order (highest score first).
 	// 0 to limit-1 gets the top 'limit' elements.
 	results, err := RedisClient.ZRevRange(ctx, MostSearchedPlacesKey, 0, int64(limit-1)).Result()
 	if err != nil {
+		utils.Logger.Errorf("Error retrieving top searched places from Redis: %v", err)
 		return nil, err
 	}
+	utils.Logger.Printf("Top searched places: %v", results)
 	return results, nil
 }
 
