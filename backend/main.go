@@ -26,7 +26,12 @@ func main() {
 	routes.RegisterRoutes(router)
 	router.HandleFunc("/ws", services.HandleConnections)
 
-	corsAllowedOrigins := []string{"http://localhost:3000", "https://yourfrontenddomain.com"}
+	allowedURI := os.Getenv("ALLOWED_URL")
+	if allowedURI == "" {
+		utils.Logger.Printf("ALLOWED_URL environment variable not set")
+	}
+
+	corsAllowedOrigins := []string{"http://localhost:3000", allowedURI}
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins(corsAllowedOrigins),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
