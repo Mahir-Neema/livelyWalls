@@ -55,11 +55,13 @@ function PropertyDetails() {
           </div>
 
           {/* Action button (example) */}
-          <div className="mt-6 text-center">
-            <button className="bg-blue-600 text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300">
-              Contact Owner
-            </button>
-          </div>
+          {propertyData.link.length > 0 ? 
+            <div className="mt-6 text-center">
+              <a href={propertyData.link} target="#" className="bg-blue-600 text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300">
+                Contact here
+              </a>
+            </div> : <div></div>
+          }
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import { setTokenFromStorage } from "@/lib/features/auth/authSlice";
 function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchedLocation, setSearchedLocation] = useState(""); // State for search input
   const [trendingLocations, setTrendingLocations] = useState([
     "Green Glen Layout",
     "WhiteField",
@@ -81,6 +82,30 @@ function Navbar() {
     // router.push('/login');
   };
 
+  const handleFocus = () => {
+    setIsSearchFocused(true);
+  };
+
+  const handleBlur = () => {
+    // Delay to allow click event to fire before closing the dropdown
+    setTimeout(() => {
+      setIsSearchFocused(false);
+    }, 200);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchedLocation(event.target.value); // Update the search input value
+  };
+
+  const handleSearchKeyPress = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === "Enter" && searchedLocation) {
+      // Redirect to the search page with the searched location when Enter is pressed
+      window.location.href = `/search?location=${searchedLocation}`;
+    }
+  };
+
   return (
     <nav className="bg-gray-100 py-4 px-6 sticky top-0 z-10">
       <div className="container mx-auto flex items-center justify-between">
@@ -97,9 +122,12 @@ function Navbar() {
             <input
               type="text"
               placeholder="Search locations..."
-              className="px-4 py-3 rounded-full text-sm w-full md:w-80 focus:outline-none focus:w-100"
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
+              className="px-4 py-3 rounded-full text-sm w-full md:w-80 focus:outline-none"
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              value={searchedLocation}
+              onChange={handleSearchChange} // Update state on input change
+              onKeyDown={handleSearchKeyPress} // Handle Enter key press
             />
             <div className="bg-pink-700 text-white p-2 rounded-full font-bold">
               <IoSearchOutline />
@@ -109,16 +137,18 @@ function Navbar() {
             {isSearchFocused && (
               <ul className="absolute left-0 top-full w-full md:w-80 bg-white rounded-md shadow-md z-10 mt-2">
                 {trendingLocations.map((location, index) => (
-                  <Link
-                    href={`/search?location=${location}`}
-                    key={index}
-                    className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
-                  >
-                    <div className="px-2">
-                      <FaArrowTrendUp />
-                    </div>
-                    {location}
-                  </Link>
+                  <li key={index}>
+                    <Link
+                      href={`/search?location=${location}`}
+                      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
+                      onClick={() => setIsSearchFocused(false)} // Close dropdown after navigation
+                    >
+                      <div className="px-2">
+                        <FaArrowTrendUp />
+                      </div>
+                      {location}
+                    </Link>
+                  </li>
                 ))}
               </ul>
             )}
@@ -135,12 +165,19 @@ function Navbar() {
             <Link href="/rent" className="text-gray-700 hover:text-gray-900">
               Rent
             </Link>
-            <Link
-              href="/addproperty"
-              className="text-gray-700 hover:text-gray-900"
-            >
-              Add Property
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                href="/addproperty"
+                className="text-gray-700 hover:text-gray-900"
+              >
+                Add Property
+              </Link>
+            ) : (
+              <Link href="/login" className="text-gray-700 hover:text-gray-900">
+                Add Property
+              </Link>
+            )}
+
             {isAuthenticated ? (
               <button
                 onClick={handleLogout}

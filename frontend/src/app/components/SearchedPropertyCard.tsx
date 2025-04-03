@@ -1,7 +1,4 @@
-import { useState } from "react";
-import { FaSackDollar } from "react-icons/fa6";
-import { CgProfile } from "react-icons/cg";
-import { PiPlantFill } from "react-icons/pi";
+"use client";
 import { useRouter } from "next/navigation";
 import { Property } from "@/models/Property";
 
@@ -37,7 +34,11 @@ function SearchedPropertyCard({ property }: PropertyCardProps) {
       {/* Details Section */}
       <div className="w-2/3 p-4 flex flex-col justify-between relative">
         <h3 className="text-lg font-semibold mb-1">
-          {property.propertyType} for {property.listingType}
+          {property.listingType === "Flatmate"
+            ? property.genderPreference.length < 8
+              ? `${property.genderPreference} ${property.listingType}`
+              : property.listingType
+            : `${property.propertyType} for ${property.listingType}`}
         </h3>
         <p className="text-gray-600">{property.location}</p>
         <p className="text-gray-600">

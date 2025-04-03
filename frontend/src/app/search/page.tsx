@@ -1,11 +1,11 @@
 "use client";
 import { useSearchParams } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import SearchedPropertyCard from "../components/SearchedPropertyCard";
 import { setSearchedProperties } from "@/lib/features/property/propertySlice";
 
-const SearchPage = () => {
+const SearchPageContent = () => {
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
   const location = searchParams.get("location");
@@ -57,8 +57,7 @@ const SearchPage = () => {
   return (
     <div className="max-w-7xl mx-auto p-4">
       <h1 className="text-xl font-semibold text-gray-800 mb-6">
-        Searching for:{" "}
-        <span className="text-indigo-600">{location || "all locations"}</span>
+        {searchedProperties.length} properties found for {location}
       </h1>
 
       <main className="justify-items-center">
@@ -67,6 +66,16 @@ const SearchPage = () => {
         ))}
       </main>
     </div>
+  );
+};
+
+const SearchPage = () => {
+  return (
+    <Suspense
+      fallback={<p className="text-center text-2xl mt-5">Loading...</p>}
+    >
+      <SearchPageContent />
+    </Suspense>
   );
 };
 
