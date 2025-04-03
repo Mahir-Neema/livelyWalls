@@ -45,7 +45,7 @@ function SearchedPropertyCard({ property }: PropertyCardProps) {
           {property.bedrooms} Beds | {property.bathrooms} Baths
         </p>
         <div className="text-gray-400 text-sm">
-          {true && <p>Vegetarian Preferred</p>}
+          {property.isVegetarianPreferred && <p>Vegetarian Preferred</p>}
         </div>
         <p className="font-bold text-lg">₹{property.rent}</p>
       </div>
