@@ -16,10 +16,12 @@ func RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/api/properties", controllers.GetProperties).Methods("GET")
 	r.HandleFunc("/api/properties/top", controllers.GetTopProperties).Methods("GET")
 	r.HandleFunc("/api/properties/{id}", controllers.GetPropertyByID).Methods("GET")
+	r.HandleFunc("/api/reviews",controllers.GetReviews).Methods("GET")
 
 	api := r.PathPrefix("/api").Subrouter()
 	api.Use(middlewares.AuthMiddleware)
 
+	RegisterReviewRoutes(api)
 	RegisterPropertyRoutes(api)
 	RegisterChatRoutes(api)
 

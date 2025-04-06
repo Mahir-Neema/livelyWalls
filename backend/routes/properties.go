@@ -21,4 +21,5 @@ func RegisterPropertyRoutes(r *mux.Router) {
 	protectedPropertyRouter.HandleFunc("/", controllers.AddProperty).Methods("POST")
 	protectedPropertyRouter.HandleFunc("/{id}", controllers.UpdateProperty).Methods("PUT")
 	protectedPropertyRouter.HandleFunc("/{id}", controllers.DeleteProperty).Methods("DELETE")
+	protectedPropertyRouter.HandleFunc("/uploadfile", controllers.UploadFile).Methods("POST")
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func SearchProperties(w http.ResponseWriter, r *http.Request) {
-	var filters map[string]interface{} 
+	var filters map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&filters); err != nil {
 		utils.WriteErrorResponse(w, "Invalid filter parameters", http.StatusBadRequest)
 		return
@@ -18,7 +18,7 @@ func SearchProperties(w http.ResponseWriter, r *http.Request) {
 
 	if city, ok := filters["city"].(string); ok && city != "" {
 		ctx := r.Context()
-		err := services.IncrementSearchedPlaceCount(ctx, city) 
+		err := services.IncrementSearchedPlaceCount(ctx, city)
 		if err != nil {
 			utils.Logger.Printf("Error incrementing searched place count in Redis: %v", err)
 		}
@@ -32,15 +32,12 @@ func SearchProperties(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-
 	properties, err := models.SearchProperties(filters)
 	if err != nil {
 		utils.Logger.Printf("Error searching properties in database: %v", err)
 		utils.WriteErrorResponse(w, "Failed to search properties", http.StatusInternalServerError)
 		return
 	}
-
-	// ... (Existing caching logic to store properties in Redis - remains the same)
 
 	utils.WriteSuccessResponse(w, properties, http.StatusOK)
 }

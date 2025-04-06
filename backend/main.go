@@ -9,17 +9,19 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 )
 
 func main() {
 
 	config.LoadEnv()
-	
+
 	utils.InitializeLogger()
-	
+
 	config.ConnectDB()
+
+	utils.InitS3()
 
 	router := mux.NewRouter()
 

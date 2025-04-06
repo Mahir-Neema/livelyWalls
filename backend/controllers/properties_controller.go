@@ -43,6 +43,7 @@ func GetPropertyByID(w http.ResponseWriter, r *http.Request) {
 		utils.WriteErrorResponse(w, "Property not found", http.StatusNotFound)
 		return
 	}
+
 	utils.WriteSuccessResponse(w, property, http.StatusOK)
 }
 
@@ -50,11 +51,51 @@ func GetPropertyByID(w http.ResponseWriter, r *http.Request) {
 func AddProperty(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(string) // Get userID from context
 
-	var property models.Property
-	if err := json.NewDecoder(r.Body).Decode(&property); err != nil {
-		utils.WriteErrorResponse(w, "Invalid request payload", http.StatusBadRequest)
+	err := r.ParseMultipartForm(10 << 20) // 10 MB max
+	if err != nil {
+		utils.WriteErrorResponse(w, "File too large (max 10MB)", http.StatusBadRequest)
 		return
 	}
+
+	jsonData := r.FormValue("property")
+	if jsonData == "" {
+		utils.WriteErrorResponse(w, "Missing property data", http.StatusBadRequest)
+		return
+	}
+
+	// Decode JSON
+	var property models.Property
+	if err := json.Unmarshal([]byte(jsonData), &property); err != nil {
+		utils.WriteErrorResponse(w, "Invalid property JSON", http.StatusBadRequest)
+		return
+	}
+
+	// file uploads
+	files := r.MultipartForm.File["photos"]
+	// var photoURLs []string
+
+	if len(files) != 0 {
+		for _, fileHeader := range files {
+			file, err := fileHeader.Open()
+			if err != nil {
+				utils.WriteErrorResponse(w, "Failed to process file", http.StatusInternalServerError)
+				return
+			}
+			defer file.Close()
+
+			// url, err := utils.UploadFileToS3(file, fileHeader, userID)
+			// utils.Logger.Printf("File uploaded to S3: %s", url)
+			// if err != nil {
+			// 	utils.Logger.Printf("Failed to upload file to S3: %v", err)
+			// 	utils.WriteErrorResponse(w, "Failed to upload image", http.StatusInternalServerError)
+			// 	return
+			// }
+			// photoURLs = append(photoURLs, url)
+		}
+	}
+
+	// property.Photos = photoURLs
+	property.OwnerID = userID
 
 	// Validate input
 	if property.PropertyType == "" || !utils.IsValidPropertyType(property.PropertyType) {
@@ -73,11 +114,14 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 		utils.WriteErrorResponse(w, "Rent cannot be negative", http.StatusBadRequest)
 		return
 	}
+	if property.Bedrooms < 0 || property.Bathrooms < 0 {
+		utils.WriteErrorResponse(w, "Bedrooms and bathrooms cannot be negative", http.StatusBadRequest)
+		return
+	}
 
-	property.OwnerID = userID // Set owner ID from authenticated user
-	err := models.AddProperty(&property)
+	err2 := models.AddProperty(&property)
 	if err != nil {
-		utils.Logger.Printf("Failed to add property to database: %v", err)
+		utils.Logger.Printf("Failed to add property to database: %v", err2)
 		utils.WriteErrorResponse(w, "Failed to add property", http.StatusInternalServerError)
 		return
 	}
@@ -140,4 +184,39 @@ func DeleteProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteSuccessResponse(w, map[string]string{"message": "Property deleted successfully"}, http.StatusOK)
+}
+
+func UploadFile(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value("userID").(string) // Get userID from context
+
+	err := r.ParseMultipartForm(10 << 20) // 10 MB max
+	if err != nil {
+		utils.WriteErrorResponse(w, "File too large (max 10MB)", http.StatusBadRequest)
+		return
+	}
+
+	files := r.MultipartForm.File["photos"]
+	if len(files) == 0 {
+		utils.WriteErrorResponse(w, "No files uploaded", http.StatusBadRequest)
+		return
+	}
+
+	for _, fileHeader := range files {
+		file, err := fileHeader.Open()
+		if err != nil {
+			utils.WriteErrorResponse(w, "Failed to process file", http.StatusInternalServerError)
+			return
+		}
+		defer file.Close()
+
+		url, err := utils.UploadFileToS3(file, fileHeader, userID)
+		if err != nil {
+			utils.Logger.Printf("Failed to upload file to Supabase: %v", err)
+			utils.WriteErrorResponse(w, "Failed to upload image", http.StatusInternalServerError)
+			return
+		}
+		utils.Logger.Printf("File uploaded to Supabase: %s", url)
+	}
+
+	utils.WriteSuccessResponse(w, map[string]string{"message": "Files uploaded successfully"}, http.StatusOK)
 }
