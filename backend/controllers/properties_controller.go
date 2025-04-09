@@ -50,6 +50,10 @@ func GetPropertyByID(w http.ResponseWriter, r *http.Request) {
 // AddProperty adds a new property
 func AddProperty(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(string) // Get userID from context
+	if userID == "" {
+		utils.WriteErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	err := r.ParseMultipartForm(10 << 20) // 10 MB max
 	if err != nil {
@@ -70,33 +74,6 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// file uploads
-	files := r.MultipartForm.File["photos"]
-	// var photoURLs []string
-
-	if len(files) != 0 {
-		for _, fileHeader := range files {
-			file, err := fileHeader.Open()
-			if err != nil {
-				utils.WriteErrorResponse(w, "Failed to process file", http.StatusInternalServerError)
-				return
-			}
-			defer file.Close()
-
-			// url, err := utils.UploadFileToS3(file, fileHeader, userID)
-			// utils.Logger.Printf("File uploaded to S3: %s", url)
-			// if err != nil {
-			// 	utils.Logger.Printf("Failed to upload file to S3: %v", err)
-			// 	utils.WriteErrorResponse(w, "Failed to upload image", http.StatusInternalServerError)
-			// 	return
-			// }
-			// photoURLs = append(photoURLs, url)
-		}
-	}
-
-	// property.Photos = photoURLs
-	property.OwnerID = userID
-
 	// Validate input
 	if property.PropertyType == "" || !utils.IsValidPropertyType(property.PropertyType) {
 		utils.WriteErrorResponse(w, "Invalid property type", http.StatusBadRequest)
@@ -104,10 +81,6 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 	}
 	if property.ListingType == "" || !utils.IsValidListingType(property.ListingType) {
 		utils.WriteErrorResponse(w, "Invalid listing type", http.StatusBadRequest)
-		return
-	}
-	if property.City == "" || property.Area == "" {
-		utils.WriteErrorResponse(w, "Address details are incomplete", http.StatusBadRequest)
 		return
 	}
 	if property.Rent < 0 {
@@ -118,6 +91,36 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 		utils.WriteErrorResponse(w, "Bedrooms and bathrooms cannot be negative", http.StatusBadRequest)
 		return
 	}
+	if property.Location == "" {
+		utils.WriteErrorResponse(w, "Location cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	// file uploads
+	files := r.MultipartForm.File["photos"]
+	var photoURLs []string
+
+	if len(files) != 0 {
+		for _, fileHeader := range files {
+			file, err := fileHeader.Open()
+			if err != nil {
+				utils.WriteErrorResponse(w, "Failed to process file", http.StatusInternalServerError)
+				return
+			}
+			defer file.Close()
+
+			url, err := utils.UploadFileToS3(file, fileHeader, userID)
+			if err != nil {
+				utils.Logger.Printf("Failed to upload file to Supabase: %v", err)
+				utils.WriteErrorResponse(w, "Failed to upload image", http.StatusInternalServerError)
+				return
+			}
+			photoURLs = append(photoURLs, url)
+		}
+	}
+
+	property.Photos = photoURLs
+	property.OwnerID = userID
 
 	err2 := models.AddProperty(&property)
 	if err != nil {

@@ -21,6 +21,8 @@ func main() {
 
 	config.ConnectDB()
 
+	services.InitFirebase()
+
 	utils.InitS3()
 
 	router := mux.NewRouter()

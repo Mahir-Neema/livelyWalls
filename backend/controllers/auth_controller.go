@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"backend/models"
+	"backend/services"
 	"backend/utils"
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -11,7 +13,47 @@ import (
 
 // GoogleSignIn - Placeholder, needs Clerk integration or actual Google OAuth logic
 func GoogleSignIn(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		IDToken string `json:"idToken"`
+	}
 
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if body.IDToken == "" {
+		http.Error(w, "ID token is required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify the Firebase ID token
+	token, err := services.FirebaseAuthClient.VerifyIDToken(context.Background(), body.IDToken)
+	if err != nil {
+		utils.Logger.Printf("Failed to verify Firebase ID token: %v\n", err)
+		http.Error(w, "Invalid ID token", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract user info
+	uid := token.UID
+	email := token.Claims["email"]
+	name := token.Claims["name"]
+
+	utils.Logger.Printf("Verified user: UID=%s, Email=%s, Name=%s\n", uid, email, name)
+
+	appToken, err := utils.GenerateJWT(uid, email.(string))
+	if err != nil {
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with token
+	resp := map[string]string{
+		"token": appToken,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // Signup handles user registration

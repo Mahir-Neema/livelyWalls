@@ -11,3 +11,6 @@
 
 # Dependency directories
 /vendor/
+
+# Firebase credentials
+config/serviceAccountKey.json
