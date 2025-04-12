@@ -144,13 +144,16 @@ const AddProperty = () => {
     });
 
     try {
-      const response = await fetch("http://localhost:8080/api/properties/", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        },
-        body: formDataToSend,
-      });
+      const response = await fetch(
+        "https://livelywalls.onrender.com/api/properties/",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+          body: formDataToSend,
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to submit the property. Please try again.");
