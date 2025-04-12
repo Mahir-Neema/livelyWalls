@@ -1,9 +1,12 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import dotenv from "dotenv";
 // import { getAnalytics } from "firebase/analytics";
 
+dotenv.config();
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCr7NpJo14vKumSJZAPS_YMXce9J_Cyv9E",
+  apiKey: process.env.FIREBASE_API_KEY,
   authDomain: "smiling-bricks.firebaseapp.com",
   projectId: "smiling-bricks",
   storageBucket: "smiling-bricks.firebasestorage.app",
