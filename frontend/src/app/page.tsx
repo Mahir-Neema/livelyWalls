@@ -39,7 +39,7 @@ export default function Home() {
     fetchAndStoreProperties();
   }, [dispatch, storedProperties.length]);
 
-  if (loading) {
+  if (loading || storedProperties.length === 0) {
     return (
       <div className="mt-16">
         <p className="text-center text-2xl">Getting Best Properties...</p>

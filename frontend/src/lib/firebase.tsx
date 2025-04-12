@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: "smiling-bricks.firebaseapp.com",
   projectId: "smiling-bricks",
   storageBucket: "smiling-bricks.firebasestorage.app",

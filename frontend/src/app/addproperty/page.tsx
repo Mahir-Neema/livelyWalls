@@ -178,7 +178,7 @@ const AddProperty = () => {
     );
   }
 
-  if (true) {
+  if (submittingForm) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div role="status">

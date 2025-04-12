@@ -4,7 +4,7 @@ import "./globals.css";
 import Navbar from "./components/Navbar";
 import StoreProvider from "./StoreProvider";
 import propertiesData from "./tempProperty.json";
-import { GoogleOAuthProvider } from "@react-oauth/google";
+// import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,13 +31,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased font-[family-name:var(--font-geist-sans)] background-white`}
       >
-        <GoogleOAuthProvider clientId="809654090015-6cf72btgha6q9jqmr5mebtmrr56hc58d.apps.googleusercontent.com">
-          <StoreProvider>
-            {/* initialProperties={propertiesData} */}
-            <Navbar />
-            {children}
-          </StoreProvider>
-        </GoogleOAuthProvider>
+        {/* <GoogleOAuthProvider clientId="809654090015-6cf72btgha6q9jqmr5mebtmrr56hc58d.apps.googleusercontent.com"> */}
+        <StoreProvider>
+          {/* initialProperties={propertiesData} */}
+          <Navbar />
+          {children}
+        </StoreProvider>
+        {/* </GoogleOAuthProvider> */}
       </body>
     </html>
   );

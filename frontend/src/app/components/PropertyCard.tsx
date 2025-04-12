@@ -46,7 +46,7 @@ function PropertyCard({ property }: PropertyCardProps) {
       <div className="relative overflow-hidden">
         <img
           src={
-            currentProperty.photos.length > 0
+            currentProperty.photos?.length > 0
               ? currentProperty.photos[0]
               : "example3.png"
           }
@@ -57,7 +57,7 @@ function PropertyCard({ property }: PropertyCardProps) {
         <div className="absolute top-2 left-2 px-3 py-1 rounded-3xl bg-gray-900 bg-opacity-75 text-white group-hover:opacity-0 transition-opacity duration-300">
           <h3 className="text-sm font-semibold">
             {currentProperty.listingType === "Flatmate"
-              ? currentProperty.genderPreference.length < 8
+              ? currentProperty.genderPreference?.length < 8
                 ? `${currentProperty.genderPreference} ${currentProperty.listingType}`
                 : currentProperty.listingType
               : `${currentProperty.propertyType} for ${currentProperty.listingType}`}
