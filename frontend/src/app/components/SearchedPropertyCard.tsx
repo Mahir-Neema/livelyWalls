@@ -35,7 +35,7 @@ function SearchedPropertyCard({ property }: PropertyCardProps) {
       <div className="w-2/3 p-4 flex flex-col justify-between relative">
         <h3 className="text-lg font-semibold mb-1">
           {property.listingType === "Flatmate"
-            ? property.genderPreference.length < 8
+            ? property.genderPreference?.length < 8
               ? `${property.genderPreference} ${property.listingType}`
               : property.listingType
             : `${property.propertyType} for ${property.listingType}`}
