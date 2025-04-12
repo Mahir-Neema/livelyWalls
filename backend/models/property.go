@@ -12,41 +12,37 @@ import (
 )
 
 type Property struct {
-	ID                    primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	OwnerID               string             `json:"owner_id" bson:"owner_id"`
-	IsOwnerListing        bool               `json:"isOwnerListing" bson:"isOwnerListing"`
-	IsBrokerListing       bool               `json:"isBrokerListing" bson:"isBrokerListing"`
-	IsAvailable           bool               `json:"isAvailable" bson:"isAvailable"`
-	IsVegetarianPreferred bool               `json:"isVegetarianPreferred" bson:"isVegetarianPreferred"`
-	IsFamilyPreferred     bool               `json:"isFamilyPreferred" bson:"isFamilyPreferred"`
-	GenderPreference      string             `json:"genderPreference" bson:"genderPreference"` // Male, Female, Any
-	PropertyType          string             `json:"propertyType" bson:"propertyType"`         // "Flat", "Apartment", "House", "Studio"
-	ListingType           string             `json:"listingType" bson:"listingType"`           // "Rent", "Sale"
-	Location              string             `json:"location" bson:"location"`                 // e.g., "Bangalore", "Delhi"
-	SocietyName           string             `json:"societyName" bson:"societyName"`
-	StreetAddress         string             `json:"streetAddress" bson:"streetAddress"`
-	Area                  string             `json:"area" bson:"area"`
-	City                  string             `json:"city" bson:"city"`
-	State                 string             `json:"state" bson:"state"`
-	ZipCode               string             `json:"zipCode" bson:"zipCode"`
-	Bedrooms              int                `json:"bedrooms" bson:"bedrooms"`
-	Bathrooms             int                `json:"bathrooms" bson:"bathrooms"`
-	AreaSqft              float64            `json:"areaSqft" bson:"areaSqft"`
-	Balconies             int                `json:"balconies" bson:"balconies"`
-	Amenities             []string           `json:"amenities" bson:"amenities"`
-	Description           string             `json:"description" bson:"description"`
-	Rent                  float64            `json:"rent" bson:"rent"`
-	SecurityDeposit       float64            `json:"securityDeposit" bson:"securityDeposit"`
-	MaintenanceCharges    float64            `json:"maintenanceCharges" bson:"maintenanceCharges"`
-	LeaseTerm             string             `json:"leaseTerm" bson:"leaseTerm"`
-	Photos                []string           `json:"photos" bson:"photos"`
-	Latitude              float64            `json:"latitude" bson:"latitude"`
-	Longitude             float64            `json:"longitude" bson:"longitude"`
-	DistancesFromOffices  map[string]float64 `json:"distancesFromOffices" bson:"distancesFromOffices"` // e.g., {"flipkart": 1.5, "google": 2.0}
-	CreatedAt             time.Time          `bson:"createdAt"`
-	UpdatedAt             time.Time          `bson:"updatedAt"`
-	Views                 int                `json:"views" bson:"views"`
-	Link                  string             `json:"link" bson:"link"`
+	ID                    primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+	OwnerID               string             `json:"owner_id,omitempty" bson:"owner_id,omitempty"`
+	IsBrokerListing       bool               `json:"isBrokerListing,omitempty" bson:"isBrokerListing,omitempty"`
+	IsAvailable           bool               `json:"isAvailable,omitempty" bson:"isAvailable,omitempty"`
+	IsVegetarianPreferred bool               `json:"isVegetarianPreferred,omitempty" bson:"isVegetarianPreferred,omitempty"`
+	IsFamilyPreferred     bool               `json:"isFamilyPreferred,omitempty" bson:"isFamilyPreferred,omitempty"`
+	GenderPreference      string             `json:"genderPreference,omitempty" bson:"genderPreference,omitempty"` // Male, Female, Any
+	PropertyType          string             `json:"propertyType,omitempty" bson:"propertyType,omitempty"`         // "Flat", "Apartment", "House", "Studio"
+	ListingType           string             `json:"listingType,omitempty" bson:"listingType,omitempty"`           // "Rent", "Sale"
+	Location              string             `json:"location,omitempty" bson:"location,omitempty"`                 // e.g., "Bangalore", "Delhi"
+	SocietyName           string             `json:"societyName,omitempty" bson:"societyName,omitempty"`
+	Area                  string             `json:"area,omitempty" bson:"area,omitempty"`
+	City                  string             `json:"city,omitempty" bson:"city,omitempty"`
+	State                 string             `json:"state,omitempty" bson:"state,omitempty"`
+	Bedrooms              int                `json:"bedrooms,omitempty" bson:"bedrooms,omitempty"`
+	Bathrooms             int                `json:"bathrooms,omitempty" bson:"bathrooms,omitempty"`
+	AreaSqft              float64            `json:"areaSqft,omitempty" bson:"areaSqft,omitempty"`
+	Balconies             int                `json:"balconies,omitempty" bson:"balconies,omitempty"`
+	Amenities             []string           `json:"amenities,omitempty" bson:"amenities,omitempty"`
+	Description           string             `json:"description,omitempty" bson:"description,omitempty"`
+	Rent                  int                `json:"rent,omitempty" bson:"rent,omitempty"`
+	SecurityDeposit       int                `json:"securityDeposit,omitempty" bson:"securityDeposit,omitempty"`
+	MaintenanceCharges    int                `json:"maintenanceCharges,omitempty" bson:"maintenanceCharges,omitempty"`
+	LeaseTerm             string             `json:"leaseTerm,omitempty" bson:"leaseTerm,omitempty"`
+	Photos                []string           `json:"photos,omitempty" bson:"photos,omitempty"`
+	CreatedAt             time.Time          `bson:"createdAt,omitempty"`
+	UpdatedAt             time.Time          `bson:"updatedAt,omitempty"`
+	Views                 int                `json:"views,omitempty" bson:"views,omitempty"`
+	Link                  string             `json:"link,omitempty" bson:"link,omitempty"`
+
+	// DistancesFromOffices map[string]float64 `json:"distancesFromOffices,omitempty" bson:"distancesFromOffices,omitempty"` // e.g., {"flipkart": 1.5, "google": 2.0}
 }
 
 func GetPropertyCollection() *mongo.Collection {

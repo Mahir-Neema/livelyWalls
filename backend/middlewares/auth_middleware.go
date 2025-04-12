@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"backend/models"
 	"backend/utils"
 	"context"
 	"net/http"
@@ -24,22 +23,14 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Validate token and extract userID and role
 		claims, err := utils.ValidateJWT(token)
 		if err != nil {
 			utils.WriteErrorResponse(w, "Invalid or Expired Token", http.StatusUnauthorized)
 			return
 		}
 
-		userID := claims["userID"].(string) // Assuming userID is string in JWT claims
-		role := claims["role"].(string)     // Assuming role is in JWT claims
-
-		// Verify user exists (optional, but good for security) - can be removed for perf in high load scenarios if user existence is guaranteed by auth flow
-		user, err := models.FindUserByID(userID)
-		if err != nil || user == nil {
-			utils.WriteErrorResponse(w, "Invalid User from Token", http.StatusUnauthorized)
-			return
-		}
+		userID := claims["userID"].(string)
+		role := claims["role"].(string)
 
 		// Add userID and role to the context
 		ctx := context.WithValue(r.Context(), "userID", userID)

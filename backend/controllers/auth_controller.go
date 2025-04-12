@@ -89,8 +89,28 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		utils.Logger.Printf("Error finding user by email: %v", err)
 		utils.WriteErrorResponse(w, "Internal server error", http.StatusInternalServerError)
 	}
+
 	if existingUser != nil {
-		utils.WriteErrorResponse(w, "Email already registered", http.StatusConflict)
+		// Verify password
+		err = bcrypt.CompareHashAndPassword([]byte(existingUser.PasswordHash), []byte(payload.Password))
+		if err != nil {
+			utils.WriteErrorResponse(w, "Invalid credentials", http.StatusUnauthorized)
+			return
+		}
+
+		// Generate JWT for existing user
+		token, err := utils.GenerateJWT(existingUser.ID.Hex(), existingUser.Role)
+		if err != nil {
+			utils.Logger.Printf("JWT generation failed: %v", err)
+			utils.WriteErrorResponse(w, "Failed to login", http.StatusInternalServerError)
+			return
+		}
+
+		// Respond with the login success and token
+		utils.WriteSuccessResponse(w, map[string]string{
+			"token":   token,
+			"message": "Login successful",
+		}, http.StatusOK)
 		return
 	}
 

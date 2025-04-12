@@ -13,7 +13,7 @@ var FirebaseApp *firebase.App
 var FirebaseAuthClient *auth.Client
 
 func InitFirebase() {
-	opt := option.WithCredentialsFile("config/serviceAccountKey.json")
+	opt := option.WithCredentialsFile("/etc/secrets/serviceAccountKey.json")
 	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		utils.Logger.Printf("error initializing Firebase app: %v\n", err)

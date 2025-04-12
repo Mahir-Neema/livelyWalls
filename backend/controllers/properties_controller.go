@@ -5,6 +5,7 @@ import (
 	"backend/utils"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -67,6 +68,8 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// utils.Logger.Printf("Received property data: %s", jsonData)
+
 	// Decode JSON
 	var property models.Property
 	if err := json.Unmarshal([]byte(jsonData), &property); err != nil {
@@ -83,7 +86,7 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 		utils.WriteErrorResponse(w, "Invalid listing type", http.StatusBadRequest)
 		return
 	}
-	if property.Rent < 0 {
+	if property.Rent <= 0 {
 		utils.WriteErrorResponse(w, "Rent cannot be negative", http.StatusBadRequest)
 		return
 	}
@@ -96,8 +99,15 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if property.CreatedAt.IsZero() {
+		property.CreatedAt = time.Now()
+	}
+	if property.Views == 0 {
+		property.Views = 0
+	}
+
 	// file uploads
-	files := r.MultipartForm.File["photos"]
+	files := r.MultipartForm.File["photoFiles"]
 	var photoURLs []string
 
 	if len(files) != 0 {
@@ -123,7 +133,7 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 	property.OwnerID = userID
 
 	err2 := models.AddProperty(&property)
-	if err != nil {
+	if err2 != nil {
 		utils.Logger.Printf("Failed to add property to database: %v", err2)
 		utils.WriteErrorResponse(w, "Failed to add property", http.StatusInternalServerError)
 		return
