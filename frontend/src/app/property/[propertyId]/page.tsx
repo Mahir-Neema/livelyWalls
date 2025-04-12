@@ -16,9 +16,15 @@ function PropertyDetails() {
     <div className="max-w-7xl mx-auto px-4 py-8 bg-gray-50">
       <div className="bg-gray-50 overflow-hidden flex flex-col sm:flex-row gap-8">
         {/* Left: Image Carousel */}
-        <div className="sm:w-1/2">
-          <ImageCarousel slides={propertyData.photos} />
-        </div>
+        {propertyData.photos?.length > 0 ? (
+          <div className="sm:w-1/2">
+            <ImageCarousel slides={propertyData.photos} />
+          </div>
+        ) : (
+          <div className="sm:w-1/2">
+            <ImageCarousel slides={["/example3.png"]} />
+          </div>
+        )}
 
         {/* Right: Property Details */}
         <div className="sm:w-1/2 p-6 flex flex-col justify-between bg-gray-50 ">
@@ -32,36 +38,51 @@ function PropertyDetails() {
 
           <div className="text-gray-700 mb-4">
             <p className="mb-2">
-              <span className="font-semibold text-gray-900">Location:</span> {propertyData.location}
+              <span className="font-semibold text-gray-900">Location:</span>{" "}
+              {propertyData.location}
             </p>
             <p className="mb-2">
-              <span className="font-semibold text-gray-900">Rent:</span> ₹{propertyData.rent}
+              <span className="font-semibold text-gray-900">Rent:</span> ₹
+              {propertyData.rent}
             </p>
             <p className="mb-2">
-              <span className="font-semibold text-gray-900">Beds:</span> {propertyData.bedrooms} |{" "}
-              <span className="font-semibold text-gray-900">Baths:</span> {propertyData.bathrooms}
+              <span className="font-semibold text-gray-900">Beds:</span>{" "}
+              {propertyData.bedrooms} |{" "}
+              <span className="font-semibold text-gray-900">Baths:</span>{" "}
+              {propertyData.bathrooms}
             </p>
             <p className="mb-2">
               <span className="font-semibold text-gray-900">Listing Type:</span>{" "}
-              {propertyData.isBrokerListing ? "Broker Listing" : "Owner Listing"}
+              {propertyData.isBrokerListing
+                ? "Broker Listing"
+                : "Owner Listing"}
             </p>
-            {propertyData.isVegetarianPreferred || propertyData.isFamilyPreferred ? (
+            {propertyData.isVegetarianPreferred ||
+            propertyData.isFamilyPreferred ? (
               <p className="mb-2">
-                <span className="font-semibold text-gray-900">Preference: </span>
+                <span className="font-semibold text-gray-900">
+                  Preference:{" "}
+                </span>
                 {propertyData.isVegetarianPreferred && <span>Vegetarian </span>}
                 {propertyData.isFamilyPreferred && <span>Family</span>}
               </p>
-            ):null}
+            ) : null}
           </div>
 
           {/* Action button (example) */}
-          {propertyData.link.length > 0 ? 
+          {propertyData.link.length > 0 ? (
             <div className="mt-6 text-center">
-              <a href={propertyData.link} target="#" className="bg-blue-600 text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300">
+              <a
+                href={propertyData.link}
+                target="#"
+                className="bg-blue-600 text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300"
+              >
                 Contact here
               </a>
-            </div> : <div></div>
-          }
+            </div>
+          ) : (
+            <div></div>
+          )}
         </div>
       </div>
     </div>

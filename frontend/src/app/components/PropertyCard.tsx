@@ -41,11 +41,15 @@ function PropertyCard({ property }: PropertyCardProps) {
   return (
     <div
       onClick={handleCardClick}
-      className="group border border-gray-300 rounded-lg overflow-hidden mb-5 shadow-md w-60 relative transition-transform duration-300 hover:scale-110 cursor-pointer"
+      className="group border border-gray-300 rounded-lg overflow-hidden mb-5 shadow-md w-60 relative transition-transform duration-300 sm:hover:scale-110 cursor-pointer"
     >
       <div className="relative overflow-hidden">
         <img
-          src={currentProperty.photos.length > 0 ? currentProperty.photos[0] : 'example3.png'}
+          src={
+            currentProperty.photos.length > 0
+              ? currentProperty.photos[0]
+              : "example3.png"
+          }
           alt="Property"
           className="w-60 h-40 object-cover block filter brightness-75 transition-all duration-300 group-hover:brightness-100 group-hover:opacity-100 transform scale-100"
         />

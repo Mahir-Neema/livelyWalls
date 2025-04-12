@@ -40,7 +40,20 @@ export default function Home() {
   }, [dispatch, storedProperties.length]);
 
   if (loading) {
-    return <p className="text-center text-2xl">Getting Best Properties...</p>;
+    return (
+      <div className="mt-16">
+        <p className="text-center text-2xl">Getting Best Properties...</p>
+        <div className="flex items-center justify-center">
+          <Image
+            src="/logo2.png"
+            alt="getting properties"
+            width={200}
+            height={150}
+            className="mt-7 animate-bounce"
+          />
+        </div>
+      </div>
+    );
   }
 
   return (

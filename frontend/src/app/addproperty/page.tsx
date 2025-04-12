@@ -9,53 +9,49 @@ import { useAppSelector } from "@/lib/hooks";
 const AddProperty = () => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const [rentInWords, setRentInWords] = useState("Zero Rupees only.");
+  const [submittingForm, setSubmittingForm] = useState(false);
   const [formData, setFormData] = useState({
-    isOwnerListing: false,
     isBrokerListing: false,
     isAvailable: true,
     isVegetarianPreferred: false,
     isFamilyPreferred: false,
     genderPreference: "Any",
     propertyType: "Flat",
-    listingType: "Rent", // Default to "Rent"
+    listingType: "Rent",
+    location: "",
     societyName: "",
-    streetAddress: "",
     area: "",
     city: "",
-    state: "",
-    zipCode: "",
-    bedrooms: 1, // Default to 1 BHK
-    bathrooms: 1, // Default to 1 bathroom
-    areaSqft: 0,
-    balconies: 0,
-    amenities: [],
+    bedrooms: 1,
+    bathrooms: 1,
     description: "",
     rent: 0,
     securityDeposit: 0,
     maintenanceCharges: 0,
-    leaseTerm: "1 year",
-    photos: [] as string[], // Updated for URLs (string[])
-    distancesFromOffices: {} as Record<string, number>,
+    photoFiles: [] as File[],
+    link: "",
+    // balconies: 0,
+    // amenities: [],
+    // areaSqft: 0,
+    // photos: [] as string[],
   });
 
   const router = useRouter();
 
   const toWords = new ToWords();
 
-  // This function will convert rent into words
-  const convertRentToWords = (rent: number | string) => {
-    if (rent === "" || rent === 0) {
+  const convertRentToWords = (rent: Number) => {
+    if (rent === 0) {
       return "Zero Rupees only.";
     }
-    // Ensure that the rent is a valid number
+
     const rentNumber = Number(rent);
     if (isNaN(rentNumber)) {
-      return "Invalid Rent Value"; // Fallback message for invalid input
+      return "Invalid Rent Value";
     }
     return toWords.convert(rentNumber, { currency: true });
   };
 
-  // Update rentInWords whenever rent changes
   useEffect(() => {
     setRentInWords(convertRentToWords(formData.rent));
   }, [formData.rent]);
@@ -74,30 +70,99 @@ const AddProperty = () => {
         [name]: checked,
       }));
     } else {
+      const newValue =
+        type === "number" ||
+        name === "bedrooms" ||
+        name === "rent" ||
+        name === "bathrooms"
+          ? Number(value)
+          : value;
+
       setFormData((prevData) => ({
         ...prevData,
-        [name]: value,
+        [name]: newValue,
       }));
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const files = e.target.files;
+  //   if (files) {
+  //     const fileUrls = Array.from(files).map((file) =>
+  //       URL.createObjectURL(file)
+  //     );
+  //     setFormData((prevData) => ({
+  //       ...prevData,
+  //       photos: fileUrls,
+  //     }));
+  //   }
+  // };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const files = e.target.files;
     if (files) {
-      const fileUrls = Array.from(files).map((file) =>
-        URL.createObjectURL(file)
-      );
       setFormData((prevData) => ({
         ...prevData,
-        photos: fileUrls,
+        photoFiles: Array.from(files),
       }));
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(formData);
-    router.push("/properties"); // Redirect after submission
+    if (!isAuthenticated) {
+      return alert("You must be logged in to submit a property.");
+    }
+
+    // const formDataPayload = new FormData();
+
+    // formDataPayload.append("property", JSON.stringify(formData));
+
+    // for (const [key, value] of Object.entries(formData)) {
+    //   if (key !== "photoFiles") {
+    //     formDataPayload.append(key, value as string | Blob);
+    //   }
+    // }
+
+    // if (formData.photoFiles && formData.photoFiles.length > 0) {
+    //   formData.photoFiles.forEach((file: File) => {
+    //     formDataPayload.append("photoFiles", file);
+    //   });
+    // }
+
+    setSubmittingForm(true);
+
+    const formDataToSend = new FormData();
+
+    // Add JSON metadata as a single field
+    const { photoFiles, ...propertyData } = formData;
+    formDataToSend.append("property", JSON.stringify(propertyData));
+
+    // Add each file to the FormData
+    photoFiles.forEach((file) => {
+      formDataToSend.append("photoFiles", file);
+    });
+
+    try {
+      const response = await fetch("http://localhost:8080/api/properties/", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+        },
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit the property. Please try again.");
+      }
+      alert("Property submitted successfully!");
+      router.push("/properties");
+    } catch (error) {
+      console.error("Error submitting property:", error);
+      alert("Failed to submit property. Please try again after some time.");
+    } finally {
+      setSubmittingForm(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -106,6 +171,32 @@ const AddProperty = () => {
         <h1 className="text-2xl font-bold text-red-500">
           You must be logged in to add a property.
         </h1>
+      </div>
+    );
+  }
+
+  if (true) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div role="status">
+          <svg
+            aria-hidden="true"
+            className="w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600"
+            viewBox="0 0 100 101"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+              fill="currentColor"
+            />
+            <path
+              d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+              fill="currentFill"
+            />
+          </svg>
+          <span className="sr-only">Submitting properties</span>
+        </div>
       </div>
     );
   }
@@ -171,6 +262,51 @@ const AddProperty = () => {
         {/* Rent in words display */}
         <div className="mt-4">
           <p className="text-sm font-semibold text-gray-400">{rentInWords}</p>
+        </div>
+
+        {/* Location and City Fields */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Location Text */}
+          <div>
+            <label
+              htmlFor="location"
+              className="block text-sm font-semibold text-gray-700"
+            >
+              Location
+            </label>
+            <input
+              type="text"
+              name="location"
+              id="location"
+              value={formData.location}
+              onChange={handleChange}
+              className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="Enter location"
+            />
+          </div>
+
+          {/* City Dropdown */}
+          <div>
+            <label
+              htmlFor="city"
+              className="block text-sm font-semibold text-gray-700"
+            >
+              City
+            </label>
+            <select
+              name="city"
+              id="city"
+              value={formData.city}
+              onChange={handleChange}
+              className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+              <option value="">Select City</option>
+              <option value="Bangalore">Bangalore</option>
+              <option value="Mumbai">Mumbai</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Hyderabad">Hyderabad</option>
+            </select>
+          </div>
         </div>
 
         {/* Description in full width */}
@@ -316,6 +452,25 @@ const AddProperty = () => {
             </select>
           </div>
 
+          {/* Property Links */}
+          <div>
+            <label
+              htmlFor="link"
+              className="block text-sm font-semibold text-gray-700"
+            >
+              Property Link/ Contact No.
+            </label>
+            <input
+              type="text"
+              name="link"
+              id="link"
+              value={formData.link}
+              onChange={handleChange}
+              className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="Enter property link"
+            />
+          </div>
+
           {/* Property Photos */}
           <div>
             <label
@@ -334,12 +489,12 @@ const AddProperty = () => {
               className="w-full mt-2 p-3 border border-gray-300 rounded-md"
             />
             <div className="mt-4">
-              {formData.photos.length > 0 && (
+              {formData.photoFiles.length > 0 && (
                 <div className="grid grid-cols-3 gap-2">
-                  {formData.photos.map((photo, index) => (
+                  {formData.photoFiles.map((photo, index) => (
                     <img
                       key={index}
-                      src={photo}
+                      src={URL.createObjectURL(photo)}
                       alt={`Property Photo ${index + 1}`}
                       className="w-full h-32 object-cover rounded-md"
                     />

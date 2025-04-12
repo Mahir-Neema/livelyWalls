@@ -1,31 +1,32 @@
 "use client";
-import { useState } from "react";
-// import { auth, GoogleAuthProvider, signInWithPopup } from "../../lib/firebase";
+import { useState, useEffect } from "react";
+import { auth, provider, signInWithPopup } from "@/lib/firebase";
 import { FaGoogle } from "react-icons/fa";
-import { useAppDispatch } from "../../lib/hooks"; // Import the typed dispatch hook
-import { loginSuccess } from "../../lib/features/auth/authSlice"; // Import the loginSuccess action
-// import { useRouter } from 'next/navigation';
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { loginSuccess } from "@/lib/features/auth/authSlice";
+import { useRouter } from "next/navigation";
 
 const Login = () => {
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const dispatch = useAppDispatch();
-  // const router = useRouter(); 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       setError("Both username and password are required.");
       return;
     }
-    
+
     setLoading(true);
 
     // const backendUrl = process.env.BACKEND_URL || "";
-  
+
     fetch(`https://livelywalls.onrender.com/auth/login`, {
       method: "POST",
       headers: {
@@ -47,7 +48,10 @@ const Login = () => {
         // Store the token in localStorage
         if (data.success && data.data.token) {
           localStorage.setItem("authToken", data.data.token);
-          console.log("Token stored in localStorage:", localStorage.getItem("authToken"));
+          console.log(
+            "Token stored in localStorage:",
+            localStorage.getItem("authToken")
+          );
 
           // Dispatch the loginSuccess action to update Redux state
           dispatch(loginSuccess(data.data.token));
@@ -68,17 +72,40 @@ const Login = () => {
 
   // Google login handler
   const handleGoogleLogin = async () => {
-  //   try {
-  //     // const provider = new GoogleAuthProvider();
-  //     // const result = await signInWithPopup(auth, provider);
-  //     const user = result.user;
-  //     console.log("Google login successful:", user);
-      
-  //   } catch (error) {
-  //     setError("Google login failed, please try again.");
-  //     console.error("Error with Google login:", error);
-  //   }
+    try {
+      setLoading(true);
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
+      console.log("Google ID Token:", idToken);
+
+      const res = await fetch("http://localhost:8080/auth/google", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Google login failed");
+
+      localStorage.setItem("authToken", data.token);
+      dispatch(loginSuccess(data.token));
+      setError("");
+      setLoading(false);
+    } catch (error) {
+      setError("Google login failed, please try again.");
+      console.error("Error with Google login:", error);
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/");
+    }
+  }, [isAuthenticated, router]);
 
   return (
     <div className="mt-6 flex justify-center">

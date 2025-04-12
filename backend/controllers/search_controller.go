@@ -44,8 +44,8 @@ func SearchProperties(w http.ResponseWriter, r *http.Request) {
 
 // GetPopularPlaces retrieves the top N most searched cities.
 func GetPopularPlaces(w http.ResponseWriter, r *http.Request) {
-	limitStr := r.URL.Query().Get("limit") // Get limit from query parameter (e.g., ?limit=5)
-	limit := 5                             // Default limit if not provided or invalid
+	limitStr := r.URL.Query().Get("limit")
+	limit := 5 // Default limit
 	if limitStr != "" {
 		parsedLimit, err := strconv.Atoi(limitStr)
 		if err == nil && parsedLimit > 0 {
@@ -62,35 +62,4 @@ func GetPopularPlaces(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteSuccessResponse(w, topPlaces, http.StatusOK)
-}
-
-// Get rank and score for a specific place
-func GetPlaceSearchStats(w http.ResponseWriter, r *http.Request) {
-	city := r.URL.Query().Get("city")
-	if city == "" {
-		utils.WriteErrorResponse(w, "City parameter is required", http.StatusBadRequest)
-		return
-	}
-
-	ctx := r.Context()
-	rank, err := services.GetSearchedPlaceRank(ctx, city)
-	if err != nil {
-		utils.Logger.Printf("Error getting rank for %s from Redis: %v", city, err)
-		utils.WriteErrorResponse(w, "Failed to retrieve place rank", http.StatusInternalServerError)
-		return
-	}
-
-	score, err := services.GetSearchedPlaceScore(ctx, city)
-	if err != nil {
-		utils.Logger.Printf("Error getting score for %s from Redis: %v", city, err)
-		utils.WriteErrorResponse(w, "Failed to retrieve place score", http.StatusInternalServerError)
-		return
-	}
-
-	stats := map[string]interface{}{
-		"city":  city,
-		"rank":  rank,
-		"score": score,
-	}
-	utils.WriteSuccessResponse(w, stats, http.StatusOK)
 }

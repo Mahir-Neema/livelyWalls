@@ -8,6 +8,7 @@ import { IoCloseSharp } from "react-icons/io5";
 import { FiMenu } from "react-icons/fi";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { logout } from "@/lib/features/auth/authSlice";
+import { auth } from "@/lib/firebase";
 import { setTokenFromStorage } from "@/lib/features/auth/authSlice";
 // import { useRouter } from 'next/navigation';
 
@@ -76,10 +77,22 @@ function Navbar() {
     fetchTrendingLocations();
   }, []);
 
-  const handleLogout = () => {
-    dispatch(logout()); // Dispatch the logout action
-    localStorage.removeItem("authToken"); // Remove the token from localStorage
-    // router.push('/login');
+  const signOut = async () => {
+    await auth.signOut(); // google signout
+  };
+
+  const handleLogout = async () => {
+    if (isAuthenticated) {
+      try {
+        await signOut();
+        console.log("Signed out from Google successfully.");
+      } catch (error) {
+        console.error("Error signing out from Google:", error);
+      }
+    }
+
+    dispatch(logout());
+    localStorage.removeItem("authToken");
   };
 
   const handleFocus = () => {
@@ -90,7 +103,7 @@ function Navbar() {
     // Delay to allow click event to fire before closing the dropdown
     setTimeout(() => {
       setIsSearchFocused(false);
-    }, 200);
+    }, 250);
   };
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,8 +124,12 @@ function Navbar() {
       <div className="container mx-auto flex items-center justify-between">
         {/* Logo Area */}
         <div className="font-bold text-xl text-gray-800">
-          <Link href="/" className="hover:text-gray-900">
-            LivelyWalls
+          {/* if mobile then show image else show "Smiling Bricks name" */}
+          <Link href="/" className="hidden md:block hover:text-gray-900">
+            Smiling Bricks
+          </Link>
+          <Link href="/" className="md:hidden hover:text-gray-900">
+            <img src="/logo3.png" alt="Logo" className="h-12" />
           </Link>
         </div>
 
@@ -186,7 +203,10 @@ function Navbar() {
                 Logout
               </button>
             ) : (
-              <Link href="/login" className="text-gray-700 hover:text-gray-900">
+              <Link
+                href="/login"
+                className="text-gray-700 hover:text-gray-900 relative flex items-center"
+              >
                 Login
               </Link>
             )}

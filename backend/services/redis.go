@@ -17,9 +17,9 @@ var RedisEnabled bool
 func ConnectRedis() {
 	redisAddr := os.Getenv("REDIS_ADDR")
 	if redisAddr == "" {
-		utils.Logger.Println("Warning: REDIS_ADDR environment variable not set. Redis caching and popular places feature will be disabled.") // Log as a warning, not fatal
-		RedisEnabled = false                                                                                                                 // Set RedisEnabled flag to false
-		return                                                                                                                               // Return without attempting to connect, application will continue
+		utils.Logger.Println("Warning: REDIS_ADDR environment variable not set. Redis caching and popular places feature will be disabled.")
+		RedisEnabled = false
+		return
 	}
 
 	RedisEnabled = true

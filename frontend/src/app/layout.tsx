@@ -29,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased font-[family-name:var(--font-geist-sans)]`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased font-[family-name:var(--font-geist-sans)] background-white`}
       >
         <GoogleOAuthProvider clientId="809654090015-6cf72btgha6q9jqmr5mebtmrr56hc58d.apps.googleusercontent.com">
           <StoreProvider>
