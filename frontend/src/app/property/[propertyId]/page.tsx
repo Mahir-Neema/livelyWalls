@@ -30,7 +30,7 @@ function PropertyDetails() {
         <div className="sm:w-1/2 p-6 flex flex-col justify-between bg-gray-50 ">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">
             {propertyData.listingType === "Flatmate"
-              ? propertyData.genderPreference.length < 8
+              ? propertyData.genderPreference?.length < 8
                 ? `${propertyData.genderPreference} ${propertyData.listingType}`
                 : propertyData.listingType
               : `${propertyData.propertyType} for ${propertyData.listingType}`}
