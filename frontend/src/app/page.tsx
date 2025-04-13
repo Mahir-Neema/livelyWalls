@@ -39,6 +39,27 @@ export default function Home() {
     fetchAndStoreProperties();
   }, [dispatch, storedProperties.length]);
 
+  const reviews = [
+    {
+      name: "Aditya",
+      review:
+        "Found my dream flat in Koramangala within a day. SmilingBricks is a game-changer!",
+      rating: 5,
+    },
+    {
+      name: "Aryan",
+      review:
+        "Loved how easy it was to find a verified, non-broker listing in HSR. Super smooth process!",
+      rating: 4,
+    },
+    {
+      name: "Mohit",
+      review:
+        "Great variety, real photos, and no hidden surprises. SmilingBricks made renting stress-free!",
+      rating: 5,
+    },
+  ];
+
   if (loading || storedProperties.length === 0) {
     return (
       <div className="mt-16">
@@ -74,53 +95,55 @@ export default function Home() {
             <PropertyCard key={index} property={property} />
           ))}
         </main>
-        <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="/file.svg"
-              alt="File icon"
-              width={16}
-              height={16}
-            />
-            Learn
-          </a>
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="/window.svg"
-              alt="Window icon"
-              width={16}
-              height={16}
-            />
-            Examples
-          </a>
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="/globe.svg"
-              alt="Globe icon"
-              width={16}
-              height={16}
-            />
-            Go to nextjs.org →
-          </a>
-        </footer>
+        {/* reviews */}
+        <div className="p-4 sm:p-6">
+          {/* Header Section */}
+          <div className="relative mb-6">
+            <h1 className="text-xl sm:text-2xl font-bold text-center">
+              See the Smiles We’ve Made
+            </h1>
+          </div>
+
+          {/* Reviews Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 px-7">
+            {reviews.map((review, index) => (
+              <div key={index} className="bg-white p-3 rounded-lg border">
+                {/* User Info */}
+                <div className="flex items-center mb-3">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-500 text-white text-lg font-bold">
+                    {review.name[0]}
+                  </div>
+                  <div className="ml-4">
+                    <h2 className="text-base sm:text-lg font-bold">
+                      {review.name}
+                    </h2>
+                    <div className="flex text-yellow-500">
+                      {Array(review.rating)
+                        .fill(0)
+                        .map((_, i) => (
+                          <svg
+                            key={i}
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                            className="w-4 h-4 sm:w-5 sm:h-5"
+                          >
+                            <path d="M12 17.75l-6.517 3.695 1.24-7.233L.92 9.511l7.273-1.057L12 1.875l3.808 6.579 7.272 1.057-5.804 4.701 1.239 7.233z" />
+                          </svg>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Review Text */}
+                <p className="text-gray-600 text-sm sm:text-base">
+                  {review.review}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center"></footer>
       </div>
     </div>
   );

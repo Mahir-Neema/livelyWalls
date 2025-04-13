@@ -78,7 +78,7 @@ const Login = () => {
       const idToken = await result.user.getIdToken();
       console.log("Google ID Token:", idToken);
 
-      const res = await fetch("http://localhost:8080/auth/google", {
+      const res = await fetch("https://livelywalls.onrender.com/auth/google", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
