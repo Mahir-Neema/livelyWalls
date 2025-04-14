@@ -149,8 +149,8 @@ function Navbar() {
               onFocus={handleFocus}
               onBlur={handleBlur}
               value={searchedLocation}
-              onChange={handleSearchChange} // Update state on input change
-              onKeyDown={handleSearchKeyPress} // Handle Enter key press
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyPress}
             />
             <div className="bg-pink-700 text-white p-2 rounded-full font-bold hover:cursor-pointer">
               <IoSearchOutline onClick={handleSearchClick} />
@@ -179,12 +179,6 @@ function Navbar() {
 
           {/* Navigation Links */}
           <div className="hidden md:flex space-x-6">
-            <Link
-              href="/popular"
-              className="text-gray-700 hover:text-gray-900 flex items-center"
-            >
-              <FaArrowTrendUp />
-            </Link>
             <Link href="/rent" className="text-gray-700 hover:text-gray-900">
               Rent
             </Link>

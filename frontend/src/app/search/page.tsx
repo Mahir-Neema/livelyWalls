@@ -13,6 +13,11 @@ const SearchPageContent = () => {
   const searchedProperties =
     useAppSelector((state) => state.property.searchedProperties) || [];
   const [loading, setLoading] = useState(searchedProperties.length === 0);
+  const [isNoBroker, setIsNoBroker] = useState(false);
+
+  const filteredProperties = isNoBroker
+    ? searchedProperties.filter((property) => !property.isBrokerListing)
+    : searchedProperties;
 
   useEffect(() => {
     const fetchSearchedLocations = async () => {
@@ -61,12 +66,30 @@ const SearchPageContent = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4">
-      <h1 className="text-xl font-semibold text-gray-800 mb-6">
-        {searchedProperties.length} properties found for {location}
-      </h1>
+      <div className="flex justify-between">
+        <h1 className="text-xl font-semibold text-gray-800 mb-6">
+          {filteredProperties.length} properties found for {location}
+        </h1>
+
+        <div className="mb-6 flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="no-broker"
+            checked={isNoBroker}
+            onChange={() => setIsNoBroker(!isNoBroker)}
+            className="w-5 h-5 border border-gray-300 rounded-lg text-blue-600 focus:ring-2 focus:ring-blue-500"
+          />
+          <label
+            htmlFor="no-broker"
+            className="text-lg font-medium text-gray-800"
+          >
+            No brokerage
+          </label>
+        </div>
+      </div>
 
       <main className="justify-items-center">
-        {searchedProperties.map((property, index) => (
+        {filteredProperties.map((property, index) => (
           <SearchedPropertyCard key={index} property={property} />
         ))}
       </main>

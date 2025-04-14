@@ -17,11 +17,11 @@ function PropertyDetails() {
       <div className="bg-gray-50 overflow-hidden flex flex-col sm:flex-row gap-8">
         {/* Left: Image Carousel */}
         {propertyData.photos?.length > 0 ? (
-          <div className="sm:w-1/2">
+          <div className="sm:w-1/2 mt-0 md:mt-6">
             <ImageCarousel slides={propertyData.photos} />
           </div>
         ) : (
-          <div className="sm:w-1/2">
+          <div className="sm:w-1/2 mt-0 md:mt-6">
             <ImageCarousel slides={["/example3.png"]} />
           </div>
         )}
@@ -34,6 +34,8 @@ function PropertyDetails() {
                 ? `${propertyData.genderPreference} ${propertyData.listingType}`
                 : propertyData.listingType
               : `${propertyData.propertyType} for ${propertyData.listingType}`}
+            {": "}
+            {propertyData.isBrokerListing ? "Broker Listing" : "Owner Listing"}
           </h1>
 
           <div className="text-gray-700 mb-4">
@@ -51,12 +53,6 @@ function PropertyDetails() {
               <span className="font-semibold text-gray-900">Baths:</span>{" "}
               {propertyData.bathrooms}
             </p>
-            <p className="mb-2">
-              <span className="font-semibold text-gray-900">Listing Type:</span>{" "}
-              {propertyData.isBrokerListing
-                ? "Broker Listing"
-                : "Owner Listing"}
-            </p>
             {propertyData.isVegetarianPreferred ||
             propertyData.isFamilyPreferred ? (
               <p className="mb-2">
@@ -67,10 +63,22 @@ function PropertyDetails() {
                 {propertyData.isFamilyPreferred && <span>Family</span>}
               </p>
             ) : null}
+
+            {/* Description */}
+            {propertyData.description?.length > 0 ? (
+              <div>
+                <span className="text-xl font-semibold text-gray-900 mb-2">
+                  Description:{" "}
+                </span>
+                <span className="text-gray-700">
+                  {propertyData.description}
+                </span>
+              </div>
+            ) : null}
           </div>
 
           {/* Action button (example) */}
-          {propertyData.link.length > 0 ? (
+          {propertyData.link?.length > 0 ? (
             <div className="mt-6 text-center">
               <a
                 href={propertyData.link}
