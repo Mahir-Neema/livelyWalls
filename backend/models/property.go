@@ -151,7 +151,7 @@ func DeleteProperty(id string) error {
 }
 
 // SearchProperties performs a search on properties based on filters
-func SearchProperties(filters map[string]interface{}) ([]*Property, error) {
+func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property, error) {
 	collection := GetPropertyCollection()
 	query := bson.M{}
 
@@ -196,8 +196,17 @@ func SearchProperties(filters map[string]interface{}) ([]*Property, error) {
 		query["genderPreference"] = bson.M{"$regex": primitive.Regex{Pattern: genderPreference, Options: "i"}} // Case-insensitive search
 	}
 
-	// Perform the search query
-	cursor, err := collection.Find(context.Background(), query)
+	// Sort and limit
+	findOptions := options.Find()
+	findOptions.SetSort(bson.M{"createdAt": -1})
+
+	if limit <= 0 {
+		limit = 10 // Default limit
+	}
+	findOptions.SetLimit(limit)
+
+	// Search query
+	cursor, err := collection.Find(context.Background(), query, findOptions)
 	if err != nil {
 		return nil, err
 	}

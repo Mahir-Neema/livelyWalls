@@ -16,6 +16,11 @@ func SearchProperties(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	limit := int64(10)
+	if limitParam, ok := filters["limit"].(float64); ok && limitParam > 0 { // JSON decoders in Go parse numeric values into float64 by default.
+		limit = int64(limitParam)
+	}
+
 	if city, ok := filters["city"].(string); ok && city != "" {
 		ctx := r.Context()
 		err := services.IncrementSearchedPlaceCount(ctx, city)
@@ -32,7 +37,7 @@ func SearchProperties(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	properties, err := models.SearchProperties(filters)
+	properties, err := models.SearchProperties(filters, limit)
 	if err != nil {
 		utils.Logger.Printf("Error searching properties in database: %v", err)
 		utils.WriteErrorResponse(w, "Failed to search properties", http.StatusInternalServerError)
