@@ -9,6 +9,7 @@ const SearchPageContent = () => {
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
   const location = searchParams.get("location");
+  const listingType = searchParams.get("listingType");
   const searchedProperties =
     useAppSelector((state) => state.property.searchedProperties) || [];
   const [loading, setLoading] = useState(searchedProperties.length === 0);
@@ -17,6 +18,10 @@ const SearchPageContent = () => {
     const fetchSearchedLocations = async () => {
       try {
         const body = JSON.stringify({ location: location });
+        // const body = JSON.stringify({
+        //   location: location,
+        //   listingType: listingType,
+        // });
 
         const response = await fetch(
           "https://livelywalls.onrender.com/search",

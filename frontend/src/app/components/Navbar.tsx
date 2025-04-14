@@ -119,6 +119,12 @@ function Navbar() {
     }
   };
 
+  const handleSearchClick = () => {
+    if (searchedLocation !== "") {
+      window.location.href = `/search?location=${searchedLocation}`;
+    }
+  };
+
   return (
     <nav className="bg-gray-100 py-4 px-6 sticky top-0 z-10">
       <div className="container mx-auto flex items-center justify-between">
@@ -146,8 +152,8 @@ function Navbar() {
               onChange={handleSearchChange} // Update state on input change
               onKeyDown={handleSearchKeyPress} // Handle Enter key press
             />
-            <div className="bg-pink-700 text-white p-2 rounded-full font-bold">
-              <IoSearchOutline />
+            <div className="bg-pink-700 text-white p-2 rounded-full font-bold hover:cursor-pointer">
+              <IoSearchOutline onClick={handleSearchClick} />
             </div>
 
             {/* Dropdown for search results */}
