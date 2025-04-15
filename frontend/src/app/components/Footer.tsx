@@ -21,15 +21,20 @@ function Footer() {
           <h3 className="text-lg font-semibold mb-3">Quick Links</h3>
           <ul className="space-y-2 text-sm sm:text-base">
             <li>
-              <a href="#" className="hover:underline">
+              <Link
+                href={`/search?listingType=Rent`}
+                className="hover:underline"
+              >
                 Rentals
-              </a>
+              </Link>
             </li>
             <li>
-              {/* <Link href={`/search?listingType="Flatmate"`}>Flatmates</Link> */}
-              <a href="#" className="hover:underline">
+              <Link
+                href={`/search?listingType=Flatmate`}
+                className="hover:underline"
+              >
                 Flatmates
-              </a>
+              </Link>
             </li>
             <li>
               <Link className="hover:underline" href="/addproperty">

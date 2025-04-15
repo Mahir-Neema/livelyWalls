@@ -22,11 +22,16 @@ const SearchPageContent = () => {
   useEffect(() => {
     const fetchSearchedLocations = async () => {
       try {
-        const body = JSON.stringify({ location: location });
-        // const body = JSON.stringify({
-        //   location: location,
-        //   listingType: listingType,
-        // });
+        // const body = JSON.stringify({ location: location });
+        if (location) {
+          var body = JSON.stringify({ location: location });
+        } else if (listingType) {
+          var body = JSON.stringify({ listingType: listingType });
+        } else {
+          setLoading(false);
+          return;
+        }
+        console.log("Body:", body);
 
         const response = await fetch(
           "https://livelywalls.onrender.com/search",
@@ -51,15 +56,15 @@ const SearchPageContent = () => {
       }
     };
 
-    if (location) {
+    if (location || listingType) {
       fetchSearchedLocations();
     }
-  }, [location]);
+  }, [location, listingType]);
 
   if (loading) {
     return (
       <p className="text-center text-2xl mt-5">
-        Searching {location} best properties....
+        Searching {location ? location : listingType} best properties....
       </p>
     );
   }
@@ -77,7 +82,7 @@ const SearchPageContent = () => {
             id="no-broker"
             checked={isNoBroker}
             onChange={() => setIsNoBroker(!isNoBroker)}
-            className="w-5 h-5 border border-gray-300 rounded-lg text-blue-600 focus:ring-2 focus:ring-blue-500"
+            className="w-5 h-5 border border-gray-300 rounded-lg text-blue-600"
           />
           <label
             htmlFor="no-broker"
