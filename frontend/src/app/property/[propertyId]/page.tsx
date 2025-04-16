@@ -2,12 +2,34 @@
 
 import ImageCarousel from "@/app/components/ImageCarousel";
 import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 function PropertyDetails() {
   const searchParams = useSearchParams();
   const property = searchParams.get("property");
 
   const propertyData = property ? JSON.parse(property) : null;
+  const propertyId = propertyData?.propertyId || null;
+
+  useEffect(() => {
+    if (propertyId) {
+      const updateViewCount = async () => {
+        const res = await fetch(
+          `https://livelywalls.onrender.com/api/properties/${propertyId}/view`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (!res.ok) {
+          console.error("Failed to update view count");
+        }
+      };
+      updateViewCount();
+    }
+  }, [propertyId]);
 
   if (!propertyData)
     return <p className="text-center mt-8 text-gray-500">Loading...</p>;
