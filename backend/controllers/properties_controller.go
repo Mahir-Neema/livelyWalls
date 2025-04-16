@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"backend/models"
+	"backend/services"
 	"backend/utils"
 	"encoding/json"
 	"net/http"
@@ -199,6 +200,7 @@ func DeleteProperty(w http.ResponseWriter, r *http.Request) {
 	utils.WriteSuccessResponse(w, map[string]string{"message": "Property deleted successfully"}, http.StatusOK)
 }
 
+// temporary function to upload files
 func UploadFile(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(string) // Get userID from context
 
@@ -232,4 +234,20 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteSuccessResponse(w, map[string]string{"message": "Files uploaded successfully"}, http.StatusOK)
+}
+
+func UpdatePropertyViews(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	propertyID := params["id"]
+	if propertyID == "" {
+		utils.WriteErrorResponse(w, "Property ID is required", http.StatusBadRequest)
+		return
+	}
+	utils.Logger.Printf("Incrementing views for property ID: %s", propertyID)
+
+	go services.IncrementPropertyView(propertyID) // async call to avoid blocking
+
+	utils.WriteSuccessResponse(w, map[string]string{
+		"message": "View recorded successfully",
+	}, http.StatusOK)
 }

@@ -114,12 +114,13 @@ func GetPropertyByID(id string) (*Property, error) {
 	if err != nil {
 		return nil, err
 	}
+	go services.IncrementPropertyView(id) // async call to avoid blocking
 	return &property, nil
 }
 
 func AddProperty(property *Property) error {
 	collection := GetPropertyCollection()
-	property.ID = primitive.NewObjectID() // Generate ObjectID on add
+	property.ID = primitive.NewObjectID()
 	property.CreatedAt = time.Now()
 	property.UpdatedAt = time.Now()
 	_, err := collection.InsertOne(context.Background(), property)
@@ -225,4 +226,14 @@ func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property,
 		return nil, err
 	}
 	return properties, nil
+}
+
+func IncrementPropertyViews(propertyID string, count int) error {
+	collection := GetPropertyCollection()
+
+	filter := bson.M{"_id": propertyID}
+	update := bson.M{"$inc": bson.M{"views": count}}
+
+	_, err := collection.UpdateOne(context.Background(), filter, update)
+	return err
 }

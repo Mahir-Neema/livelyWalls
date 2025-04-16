@@ -10,6 +10,7 @@ import (
 )
 
 const MostSearchedPlacesKey = "most_searched_places"
+const redisViewKeyPrefix = "property_views:"
 
 var RedisClient *redis.Client
 var RedisEnabled bool
@@ -93,31 +94,76 @@ func GetTopSearchedPlaces(ctx context.Context, limit int) ([]string, error) {
 }
 
 // GetSearchedPlaceRank retrieves the rank of a place in the sorted set.
-func GetSearchedPlaceRank(ctx context.Context, city string) (int64, error) {
-	if !RedisEnabled {
-		return -1, nil
-	}
-	rank, err := RedisClient.ZRevRank(ctx, MostSearchedPlacesKey, city).Result()
-	if err != nil && err != redis.Nil { // redis.Nil is not an error in this context if the city is not found
-		return 0, err
-	}
-	if err == redis.Nil {
-		return -1, nil // Indicate city not found in the sorted set
-	}
-	return rank + 1, nil // Rank is 0-indexed, so add 1 to get 1-based rank
-}
+//func GetSearchedPlaceRank(ctx context.Context, city string) (int64, error) {
+//	if !RedisEnabled {
+//		return -1, nil
+//	}
+//	rank, err := RedisClient.ZRevRank(ctx, MostSearchedPlacesKey, city).Result()
+//	if err != nil && err != redis.Nil { // redis.Nil is not an error in this context if the city is not found
+//		return 0, err
+//	}
+//	if err == redis.Nil {
+//		return -1, nil // Indicate city not found in the sorted set
+//	}
+//	return rank + 1, nil // Rank is 0-indexed, so add 1 to get 1-based rank
+//}
 
 // GetSearchedPlaceScore retrieves the search score of a place.
-func GetSearchedPlaceScore(ctx context.Context, city string) (int64, error) {
-	if !RedisEnabled {
-		return 0, nil // Score is 0 if Redis is disabled
+//func GetSearchedPlaceScore(ctx context.Context, city string) (int64, error) {
+//	if !RedisEnabled {
+//		return 0, nil // Score is 0 if Redis is disabled
+//	}
+//	scoreFloat, err := RedisClient.ZScore(ctx, MostSearchedPlacesKey, city).Result()
+//	if err != nil && err != redis.Nil {
+//		return 0, err
+//	}
+//	if err == redis.Nil {
+//		return 0, nil
+//	}
+//	return int64(scoreFloat), nil
+//}
+
+func IncrementPropertyView(propertyID string) {
+	if !IsRedisEnabled() {
+		utils.Logger.Printf("Redis is not enabled. Not incrementing view count for property %s", propertyID)
+		return
 	}
-	scoreFloat, err := RedisClient.ZScore(ctx, MostSearchedPlacesKey, city).Result()
-	if err != nil && err != redis.Nil {
-		return 0, err
+	key := redisViewKeyPrefix + propertyID
+	ctx := context.Background()
+	GetRedisClient().Incr(ctx, key)
+	//expiration to auto-clear if unused
+	//GetRedisClient().Expire(ctx, key, 48*time.Hour)
+}
+
+// GetAllPropertyViews returns all view counts from Redis (for batch update)
+func GetAllPropertyViews() (map[string]int64, error) {
+	if !IsRedisEnabled() {
+		return nil, nil
 	}
-	if err == redis.Nil {
-		return 0, nil
+	ctx := context.Background()
+	keys, err := RedisClient.Keys(ctx, redisViewKeyPrefix+"*").Result()
+	if err != nil {
+		return nil, err
 	}
-	return int64(scoreFloat), nil
+
+	result := make(map[string]int64)
+	for _, key := range keys {
+		val, err2 := RedisClient.Get(ctx, key).Int64()
+		if err2 == nil {
+			// Remove prefix to get original propertyID
+			propertyID := key[len(redisViewKeyPrefix):]
+			result[propertyID] = val
+		}
+	}
+	return result, nil
+}
+
+// To clear the Redis view count for a property after we sync it to MongoDB
+func ClearViewCount(propertyID string) {
+	if !IsRedisEnabled() {
+		return
+	}
+	key := redisViewKeyPrefix + propertyID
+	ctx := context.Background()
+	GetRedisClient().Del(ctx, key)
 }
