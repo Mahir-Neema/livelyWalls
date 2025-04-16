@@ -9,7 +9,7 @@ function PropertyDetails() {
   const property = searchParams.get("property");
 
   const propertyData = property ? JSON.parse(property) : null;
-  const propertyId = propertyData?.propertyId || null;
+  const propertyId = propertyData?.id || null;
 
   useEffect(() => {
     if (propertyId) {
