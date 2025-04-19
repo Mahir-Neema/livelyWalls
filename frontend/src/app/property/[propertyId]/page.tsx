@@ -41,6 +41,13 @@ function PropertyDetails() {
         {propertyData.photos?.length > 0 ? (
           <div className="sm:w-1/2 mt-0 md:mt-6">
             <ImageCarousel slides={propertyData.photos} />
+            {propertyData.views > 0 && (
+              <div className="flex justify-end mt-2">
+                <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-sm dark:bg-purple-900 dark:text-purple-300">
+                  views: {propertyData.views}
+                </span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="sm:w-1/2 mt-0 md:mt-6">
@@ -61,9 +68,11 @@ function PropertyDetails() {
           </h1>
 
           <div className="text-gray-700 mb-4">
-            <p className="mb-2">
-              <span className="font-semibold text-gray-900">Location:</span>{" "}
-              {propertyData.location}
+            <p className="mb-2 flex justify-between items-center">
+              <span>
+                <span className="font-semibold text-gray-900">Location:</span>{" "}
+                {propertyData.location}
+              </span>
             </p>
             <p className="mb-2">
               <span className="font-semibold text-gray-900">Rent:</span> ₹

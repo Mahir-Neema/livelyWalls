@@ -26,6 +26,7 @@ function PropertyCard({ property }: PropertyCardProps) {
     isBrokerListing: true,
     isVegetarianPreferred: true,
     isFamilyPreferred: false,
+    views: 0,
   };
 
   const currentProperty = property || placeholderProperty;

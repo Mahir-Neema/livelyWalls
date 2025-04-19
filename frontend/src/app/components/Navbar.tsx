@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { IoSearchOutline } from "react-icons/io5";
 import { FaArrowTrendUp } from "react-icons/fa6";
@@ -10,7 +10,7 @@ import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { logout } from "@/lib/features/auth/authSlice";
 import { auth } from "@/lib/firebase";
 import { setTokenFromStorage } from "@/lib/features/auth/authSlice";
-// import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
 function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -22,7 +22,8 @@ function Navbar() {
   ]);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const dispatch = useAppDispatch();
-  // const router = useRouter();
+  const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -77,6 +78,26 @@ function Navbar() {
     fetchTrendingLocations();
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (
+        isMobileMenuOpen &&
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
+      ) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
+
   const signOut = async () => {
     await auth.signOut(); // google signout
   };
@@ -114,14 +135,13 @@ function Navbar() {
     event: React.KeyboardEvent<HTMLInputElement>
   ) => {
     if (event.key === "Enter" && searchedLocation) {
-      // Redirect to the search page with the searched location when Enter is pressed
-      window.location.href = `/search?location=${searchedLocation}`;
+      router.push(`/search?location=${searchedLocation}`);
     }
   };
 
   const handleSearchClick = () => {
     if (searchedLocation !== "") {
-      window.location.href = `/search?location=${searchedLocation}`;
+      router.push(`/search?location=${searchedLocation}`);
     }
   };
 
@@ -224,6 +244,7 @@ function Navbar() {
         </div>
       </div>
       <div
+        ref={menuRef}
         className={`md:hidden absolute top-0 left-0 bg-gray-100 w-full py-4 mt-4 transition-all duration-300 ease-in-out transform ${
           isMobileMenuOpen
             ? "translate-y-0 opacity-100"
