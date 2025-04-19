@@ -2,6 +2,7 @@ package models
 
 import (
 	"backend/services"
+	"backend/utils"
 	"context"
 	"time"
 
@@ -79,7 +80,7 @@ func GetTopProperties(limit int) ([]*Property, error) {
 	// Query to find properties sorted by views in descending order
 	cursor, err := collection.Find(
 		context.Background(),
-		bson.M{}, // Empty filter to match all properties
+		bson.M{},                                                           // Empty filter to match all properties
 		options.Find().SetSort(bson.M{"views": -1}).SetLimit(int64(limit)), // Sort by 'views' descending and limit the number of results
 	)
 	if err != nil {
@@ -228,12 +229,17 @@ func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property,
 	return properties, nil
 }
 
-func IncrementPropertyViews(propertyID string, count int) error {
+func IncrementPropertyViews(id string, count int) error {
 	collection := GetPropertyCollection()
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		utils.Logger.Printf("Error converting property ID to ObjectID: %v", err)
+		return err
+	}
 
-	filter := bson.M{"_id": propertyID}
+	filter := bson.M{"_id": objID}
 	update := bson.M{"$inc": bson.M{"views": count}}
 
-	_, err := collection.UpdateOne(context.Background(), filter, update)
-	return err
+	_, err2 := collection.UpdateOne(context.Background(), filter, update)
+	return err2
 }
