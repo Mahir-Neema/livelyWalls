@@ -145,6 +145,7 @@ func GetAllPropertyViews() (map[string]int64, error) {
 	if err != nil {
 		return nil, err
 	}
+	utils.Logger.Printf("Found %d keys in Redis", len(keys))
 
 	result := make(map[string]int64)
 	for _, key := range keys {
@@ -152,6 +153,7 @@ func GetAllPropertyViews() (map[string]int64, error) {
 		if err2 == nil {
 			// Remove prefix to get original propertyID
 			propertyID := key[len(redisViewKeyPrefix):]
+			utils.Logger.Printf("Found view count for property %s: %d", propertyID, val)
 			result[propertyID] = val
 		}
 	}
