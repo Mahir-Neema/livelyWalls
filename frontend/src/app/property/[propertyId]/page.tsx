@@ -13,21 +13,25 @@ function PropertyDetails() {
 
   useEffect(() => {
     if (propertyId) {
-      const updateViewCount = async () => {
-        const res = await fetch(
-          `https://livelywalls.onrender.com/api/properties/${propertyId}/view`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+      const viewedKey = `viewed_property_${propertyId}`;
+      const hasViewed = localStorage.getItem(viewedKey);
+      if (!hasViewed) {
+        const updateViewCount = async () => {
+          const res = await fetch(
+            `https://livelywalls.onrender.com/api/properties/${propertyId}/view`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          if (!res.ok) {
+            console.error("Failed to update view count");
           }
-        );
-        if (!res.ok) {
-          console.error("Failed to update view count");
-        }
-      };
-      updateViewCount();
+        };
+        updateViewCount();
+      }
     }
   }, [propertyId]);
 

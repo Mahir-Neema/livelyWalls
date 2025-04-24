@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { IoArrowBack } from "react-icons/io5";
 import { ToWords } from "to-words";
 import { useAppSelector } from "@/lib/hooks";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 const AddProperty = () => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const [rentInWords, setRentInWords] = useState("Zero Rupees only.");
   const [submittingForm, setSubmittingForm] = useState(false);
+  const [showSuccessTick, setShowSuccessTick] = useState(false);
   const [formData, setFormData] = useState({
     isBrokerListing: false,
     isAvailable: true,
@@ -158,22 +160,26 @@ const AddProperty = () => {
       if (!response.ok) {
         throw new Error("Failed to submit the property. Please try again.");
       }
-      alert("Property submitted successfully!");
-      router.push("/properties");
+      // alert("Property submitted successfully!");
+      setSubmittingForm(false);
+      setShowSuccessTick(true);
+      setTimeout(() => {
+        setShowSuccessTick(false);
+        router.push("/");
+      }, 3000);
     } catch (error) {
+      setSubmittingForm(false);
       console.error("Error submitting property:", error);
       alert("Failed to submit property. Please try again after some time.");
-    } finally {
-      setSubmittingForm(false);
     }
   };
 
   if (!isAuthenticated) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <h1 className="text-2xl font-bold text-red-500">
+        <p className="text-center text-lg font-semibold text-purple-950 mt-4">
           You must be logged in to add a property.
-        </h1>
+        </p>
       </div>
     );
   }
@@ -199,6 +205,27 @@ const AddProperty = () => {
             />
           </svg>
           <span className="sr-only">Submitting properties</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (showSuccessTick) {
+    return (
+      <div className="flex items-center justify-center min-h-screen mx-2">
+        <div className="flex flex-col items-center -translate-y-20">
+          <div className="h-40 aspect-video w-60">
+            {" "}
+            <DotLottieReact
+              src="/animation.lottie"
+              loop
+              autoplay
+              className="h-full w-full"
+            />
+          </div>
+          <p className="text-center text-lg font-semibold text-purple-950 mt-4">
+            Property submitted successfully! Redirecting to home page...
+          </p>
         </div>
       </div>
     );
