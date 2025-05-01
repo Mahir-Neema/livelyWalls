@@ -29,6 +29,7 @@ function PropertyDetails() {
           if (!res.ok) {
             console.error("Failed to update view count");
           }
+          localStorage.setItem(viewedKey, "true");
         };
         updateViewCount();
       }
