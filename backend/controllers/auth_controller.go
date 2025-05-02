@@ -39,6 +39,7 @@ func GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 	uid := token.UID
 	email := token.Claims["email"]
 	name := token.Claims["name"]
+	profile := token.Claims["picture"]
 
 	utils.Logger.Printf("Verified user: UID=%s, Email=%s, Name=%s\n", uid, email, name)
 
@@ -50,7 +51,8 @@ func GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	// Respond with token
 	resp := map[string]string{
-		"token": appToken,
+		"token":   appToken,
+		"picture": profile.(string),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -126,8 +128,8 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	user := models.User{
 		Email:        payload.Email,
 		PasswordHash: string(hashedPassword),
-		Role:         "tenant",           // Default role
-		Picture:      "/default-picture", // Default profile picture
+		Role:         "tenant",
+		Picture:      "/default-picture",
 	}
 
 	// Save user to DB

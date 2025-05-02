@@ -109,20 +109,25 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 
 	// file uploads
 	files := r.MultipartForm.File["photoFiles"]
+	if len(files) > 8 {
+		utils.Logger.Printf("More than 8 files were uploaded")
+		utils.WriteErrorResponse(w, "Too many files, max 8 photos can be uploaded", http.StatusBadRequest)
+		return
+	}
 	var photoURLs []string
 
 	if len(files) != 0 {
 		for _, fileHeader := range files {
-			file, err := fileHeader.Open()
-			if err != nil {
+			file, err2 := fileHeader.Open()
+			if err2 != nil {
 				utils.WriteErrorResponse(w, "Failed to process file", http.StatusInternalServerError)
 				return
 			}
 			defer file.Close()
 
-			url, err := utils.UploadFileToS3(file, fileHeader, userID)
-			if err != nil {
-				utils.Logger.Printf("Failed to upload file to Supabase: %v", err)
+			url, err3 := utils.UploadFileToS3(file, fileHeader, userID)
+			if err3 != nil {
+				utils.Logger.Printf("Failed to upload file to Supabase: %v", err3)
 				utils.WriteErrorResponse(w, "Failed to upload image", http.StatusInternalServerError)
 				return
 			}
