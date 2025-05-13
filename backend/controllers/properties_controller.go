@@ -5,7 +5,9 @@ import (
 	"backend/services"
 	"backend/utils"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -125,7 +127,8 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 			}
 			defer file.Close()
 
-			url, err3 := utils.UploadFileToS3(file, fileHeader, userID)
+			fileName := fmt.Sprintf("/properties/user_%s/%s%s", userID, time.Now().Format("20060102150405"), filepath.Ext(fileHeader.Filename))
+			url, err3 := utils.UploadFileToS3(file, fileHeader, fileName, userID)
 			if err3 != nil {
 				utils.Logger.Printf("Failed to upload file to Supabase: %v", err3)
 				utils.WriteErrorResponse(w, "Failed to upload image", http.StatusInternalServerError)
@@ -229,7 +232,8 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		url, err := utils.UploadFileToS3(file, fileHeader, userID)
+		fileName := fmt.Sprintf("/properties/user_%s/%s%s", userID, time.Now().Format("20060102150405"), filepath.Ext(fileHeader.Filename))
+		url, err := utils.UploadFileToS3(file, fileHeader, fileName, userID)
 		if err != nil {
 			utils.Logger.Printf("Failed to upload file to Supabase: %v", err)
 			utils.WriteErrorResponse(w, "Failed to upload image", http.StatusInternalServerError)

@@ -3,17 +3,14 @@ package utils
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"mime/multipart"
-	"net/http"
-	"os"
-	"path/filepath"
-	"time"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
 )
 
 var (
@@ -48,9 +45,9 @@ func InitS3() error {
 }
 
 // UploadFileToS3 uploads a file to S3 and returns its public URL
-func UploadFileToS3(file multipart.File, fileHeader *multipart.FileHeader, userID string) (string, error) {
+func UploadFileToS3(file multipart.File, fileHeader *multipart.FileHeader, fileName string, userID string) (string, error) {
 	// Unique filename
-	fileName := fmt.Sprintf("/properties/user_%s/%s%s", userID, time.Now().Format("20060102150405"), filepath.Ext(fileHeader.Filename))
+	//fileName := fmt.Sprintf("/properties/user_%s/%s%s", userID, time.Now().Format("20060102150405"), filepath.Ext(fileHeader.Filename))
 	Logger.Printf("Uploading file: %s", fileName)
 
 	// Read file into memory
