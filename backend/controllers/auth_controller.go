@@ -42,7 +42,7 @@ func GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	utils.Logger.Printf("Verified user: UID=%s, Email=%s, Name=%s\n", uid, email, name)
 
-	existingUser, err := models.FindUserByID(uid)
+	existingUser, err := models.FindUserByEmail(email.(string))
 	if err != nil {
 		utils.Logger.Printf("Error finding user by email: %v", err)
 	}
@@ -52,7 +52,7 @@ func GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 			Email:        email.(string),
 			PasswordHash: utils.GenerateRandomPassword(),
 			Role:         "tenant",
-			Picture:      "profile",
+			Picture:      profile.(string),
 		}
 		if err2 := user.Save(); err2 != nil {
 			utils.Logger.Printf("Error saving user to database: %v", err2)
@@ -61,7 +61,15 @@ func GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	appToken, err := utils.GenerateJWT(uid, email.(string))
+	User, err := models.FindUserByEmail(email.(string))
+	if err != nil {
+		utils.Logger.Printf("Error finding user by email: %v", err)
+		utils.WriteErrorResponse(w, "Not able to register User", http.StatusInternalServerError)
+	}
+
+	UserId := User.ID
+
+	appToken, err := utils.GenerateJWT(UserId.Hex(), "tenant")
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
