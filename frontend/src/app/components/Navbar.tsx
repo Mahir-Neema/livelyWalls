@@ -12,8 +12,17 @@ import { auth } from "@/lib/firebase";
 import { setTokenFromStorage } from "@/lib/features/auth/authSlice";
 import { useRouter } from "next/navigation";
 
+const placeHolderLocations = [
+  "Bellandur..",
+  "HSR Layout",
+  "Whitefield",
+  "Koramangala",
+  "Indiranagar",
+];
+
 function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isProfileFocused, setIsProfileFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchedLocation, setSearchedLocation] = useState(""); // State for search input
   const [trendingLocations, setTrendingLocations] = useState([
@@ -21,14 +30,22 @@ function Navbar() {
     "WhiteField",
   ]);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const profilePicture = useAppSelector((state) => state.auth.profilePicture);
+  const [placeholder, setPlaceholder] = useState("");
+  const [wordIndex, setWordIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const dispatch = useAppDispatch();
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
+    const profilePicture = localStorage.getItem("profilePicture");
     if (token) {
-      dispatch(setTokenFromStorage(token));
+      dispatch(setTokenFromStorage({ token, profilePicture }));
     } else {
       console.log("No token found in localStorage");
     }
@@ -98,6 +115,50 @@ function Navbar() {
     };
   }, [isMobileMenuOpen]);
 
+  useEffect(() => {
+    const handleClickOutsideProfile = (event: MouseEvent | TouchEvent) => {
+      if (
+        isProfileFocused &&
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsProfileFocused(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutsideProfile);
+    document.addEventListener("touchstart", handleClickOutsideProfile);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideProfile);
+      document.removeEventListener("touchstart", handleClickOutsideProfile);
+    };
+  }, [isProfileFocused]);
+
+  useEffect(() => {
+    const currentWord = placeHolderLocations[wordIndex];
+    const typingSpeed = isDeleting ? 100 : 120;
+    const timeout = setTimeout(() => {
+      let updatedCharIndex = isDeleting ? charIndex - 1 : charIndex + 1;
+      let newPlaceholder = currentWord.slice(0, updatedCharIndex);
+      setPlaceholder(newPlaceholder);
+      setCharIndex(updatedCharIndex);
+
+      // Word finished typing
+      if (!isDeleting && updatedCharIndex === currentWord.length) {
+        setTimeout(() => setIsDeleting(true), 1000);
+      }
+
+      // Word fully deleted
+      if (isDeleting && updatedCharIndex === 0) {
+        setIsDeleting(false);
+        setWordIndex((prev) => (prev + 1) % placeHolderLocations.length);
+      }
+    }, typingSpeed);
+
+    return () => clearTimeout(timeout);
+  }, [charIndex, isDeleting, wordIndex]);
+
   const signOut = async () => {
     await auth.signOut(); // google signout
   };
@@ -114,6 +175,7 @@ function Navbar() {
 
     dispatch(logout());
     localStorage.removeItem("authToken");
+    localStorage.removeItem("profilePicture");
   };
 
   const handleFocus = () => {
@@ -164,7 +226,7 @@ function Navbar() {
           <div className="relative mx-4 rounded-full border-gray-300 flex items-center bg-white pr-2 w-full md:w-auto">
             <input
               type="text"
-              placeholder="Search locations..."
+              placeholder={isSearchFocused ? "Search..." : placeholder}
               className="px-4 py-3 rounded-full text-sm w-full md:w-80 focus:outline-none"
               onFocus={handleFocus}
               onBlur={handleBlur}
@@ -216,12 +278,57 @@ function Navbar() {
             )}
 
             {isAuthenticated ? (
-              <button
-                onClick={handleLogout}
-                className="text-gray-700 hover:text-gray-900 cursor-pointer"
-              >
-                Logout
-              </button>
+              // <button
+              //   onClick={handleLogout}
+              //   className="text-gray-700 hover:text-gray-900 cursor-pointer"
+              // >
+              //   Logout
+              // </button>
+              <div ref={profileMenuRef}>
+                <div className="hover:cursor-pointer">
+                  {profilePicture ? (
+                    <img
+                      src={profilePicture}
+                      alt="Profile"
+                      className="h-6 w-6 rounded-full"
+                      onClick={() => setIsProfileFocused(!isProfileFocused)}
+                    />
+                  ) : (
+                    <div
+                      className="w-7 h-7 rounded-full bg-purple-500 text-white flex justify-center items-center"
+                      onClick={() => setIsProfileFocused(!isProfileFocused)}
+                    >
+                      😎
+                    </div>
+                  )}
+                </div>
+                {isProfileFocused && (
+                  <div className="absolute right-2 mt-2 w-50 bg-white rounded-md shadow-2xl z-20">
+                    <Link
+                      href="/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsProfileFocused(false)}
+                    >
+                      Profile
+                    </Link>
+                    {/* <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      I'm Looking for a Flat.
+                    </button>
+                    <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      I'm Looking for Shared Flat.
+                    </button> */}
+                    <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      Vegetarian Preferred
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <Link
                 href="/login"

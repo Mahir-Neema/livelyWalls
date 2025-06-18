@@ -13,6 +13,12 @@ export default function RentPage() {
   // Fetch popular locations on mount
   useEffect(() => {
     async function fetchPopularLocations() {
+      const cachedPopularLocations = localStorage.getItem("popularLocations");
+      if (cachedPopularLocations) {
+        setPopularLocations(JSON.parse(cachedPopularLocations));
+        setLoadingLocations(false);
+        return;
+      }
       try {
         const response = await fetch(
           "https://livelywalls.onrender.com/search/popular-places?limit=10",
@@ -30,6 +36,10 @@ export default function RentPage() {
 
         const data = await response.json();
         setPopularLocations(data.data || []);
+        localStorage.setItem(
+          "popularLocations",
+          JSON.stringify(data.data || [])
+        );
       } catch (error) {
         console.error("Error fetching popular locations:", error);
       } finally {

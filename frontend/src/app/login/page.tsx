@@ -27,7 +27,7 @@ const Login = () => {
 
     // const backendUrl = process.env.BACKEND_URL || "";
 
-    fetch(`https://livelywalls.onrender.com/auth/login`, {
+    fetch(`https://livelywalls.onrender.com/auth/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -91,7 +91,13 @@ const Login = () => {
       if (!res.ok) throw new Error(data.message || "Google login failed");
 
       localStorage.setItem("authToken", data.token);
-      dispatch(loginSuccess(data.token));
+      localStorage.setItem("profilePicture", data.picture || "");
+      dispatch(
+        loginSuccess({
+          token: data.token,
+          profilePicture: data.picture || null,
+        })
+      );
       setError("");
       setLoading(false);
     } catch (error) {
