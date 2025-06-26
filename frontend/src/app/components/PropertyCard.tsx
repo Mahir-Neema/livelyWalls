@@ -110,7 +110,11 @@ function PropertyCard({ property }: PropertyCardProps) {
 
         {/* Bottom Text Overlay */}
         <div className="absolute bottom-0 left-0 p-4 text-white text-center group-hover:opacity-0 transition-opacity duration-300 w-full">
-          <p className="text-sm mb-1">{currentProperty.location}</p>
+          <p className="text-sm mb-1">
+            {currentProperty.location.length > 40
+              ? `${currentProperty.location.slice(0, 40)}...`
+              : currentProperty.location}
+          </p>
           <p className="text-sm mb-1">
             {currentProperty.bedrooms} Beds | {currentProperty.bathrooms} Baths
           </p>

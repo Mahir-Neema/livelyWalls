@@ -12,6 +12,14 @@ import { auth } from "@/lib/firebase";
 import { setTokenFromStorage } from "@/lib/features/auth/authSlice";
 import { useRouter } from "next/navigation";
 
+const placeHolderLocations = [
+  "Bellandur",
+  "HSR Layout",
+  "Whitefield",
+  "Koramangala",
+  "Indiranagar",
+];
+
 function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -20,6 +28,11 @@ function Navbar() {
     "Green Glen Layout",
     "WhiteField",
   ]);
+  const [placeholder, setPlaceholder] = useState("");
+  const [wordIndex, setWordIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -98,6 +111,30 @@ function Navbar() {
     };
   }, [isMobileMenuOpen]);
 
+  useEffect(() => {
+    const currentWord = placeHolderLocations[wordIndex];
+    const typingSpeed = isDeleting ? 100 : 120;
+
+    const timeout = setTimeout(() => {
+      let updatedCharIndex = isDeleting ? charIndex - 1 : charIndex + 1;
+      setPlaceholder(currentWord.slice(0, updatedCharIndex));
+      setCharIndex(updatedCharIndex);
+
+      // Word finished typing
+      if (!isDeleting && updatedCharIndex === currentWord.length) {
+        setTimeout(() => setIsDeleting(true), 1000);
+      }
+
+      // Word fully deleted
+      if (isDeleting && updatedCharIndex === 0) {
+        setIsDeleting(false);
+        setWordIndex((prev) => (prev + 1) % placeHolderLocations.length);
+      }
+    }, typingSpeed);
+
+    return () => clearTimeout(timeout);
+  }, [charIndex, isDeleting, wordIndex]);
+
   const signOut = async () => {
     await auth.signOut(); // google signout
   };
@@ -164,7 +201,7 @@ function Navbar() {
           <div className="relative mx-4 rounded-full border-gray-300 flex items-center bg-white pr-2 w-full md:w-auto">
             <input
               type="text"
-              placeholder="Search locations..."
+              placeholder={isSearchFocused ? "Search..." : placeholder}
               className="px-4 py-3 rounded-full text-sm w-full md:w-80 focus:outline-none"
               onFocus={handleFocus}
               onBlur={handleBlur}
