@@ -149,7 +149,7 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 			err3 := models.AddProperty(cleanedProperty)
 			if err3 != nil {
 				utils.Logger.Printf("Failed to add property to database: %v", err3)
-				utils.WriteErrorResponse(w, "Failed to add property", http.StatusInternalServerError)
+				//utils.WriteErrorResponse(w, "Failed to add property", http.StatusInternalServerError)
 				continue
 			} else {
 				utils.WriteSuccessResponse(w, map[string]string{"message": "Property processed and added successfully"}, http.StatusCreated)
