@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"backend/jobs"
 	"backend/models"
 	"backend/services"
 	"backend/utils"
@@ -141,12 +142,32 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 	property.Photos = photoURLs
 	property.OwnerID = userID
 
+	maxRetries := 3
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		cleanedProperty, err2 := jobs.CleanupJob(&property)
+		if err2 == nil {
+			err3 := models.AddProperty(cleanedProperty)
+			if err3 != nil {
+				utils.Logger.Printf("Failed to add property to database: %v", err3)
+				utils.WriteErrorResponse(w, "Failed to add property", http.StatusInternalServerError)
+				continue
+			} else {
+				utils.WriteSuccessResponse(w, map[string]string{"message": "Property processed and added successfully"}, http.StatusCreated)
+				return
+			}
+		}
+		utils.Logger.Printf("Cleanup attempt %d failed for user %s: %v", attempt, userID, err2)
+		time.Sleep(time.Second * time.Duration(attempt)) // exponential backoff
+	}
+
+	// if cleanUp is failing then directly upload
 	err2 := models.AddProperty(&property)
 	if err2 != nil {
 		utils.Logger.Printf("Failed to add property to database: %v", err2)
 		utils.WriteErrorResponse(w, "Failed to add property", http.StatusInternalServerError)
 		return
 	}
+
 	utils.WriteSuccessResponse(w, map[string]string{"message": "Property added successfully"}, http.StatusCreated)
 }
 
