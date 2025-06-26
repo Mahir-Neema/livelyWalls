@@ -43,7 +43,7 @@ func CleanupJob(property *models.Property) (*models.Property, error) {
 	  IsFamilyPreferred bool
 	  GenderPreference string // Male, Female, Any
 	  PropertyType string // "Flat", "Apartment", "House", "Studio"
-	  ListingType string // "Rent", "Sale"
+	  ListingType string // "Rent", "Sale", "Flatmate"
 	  Location string
 	  SocietyName string
 	  Area string
@@ -76,7 +76,7 @@ func CleanupJob(property *models.Property) (*models.Property, error) {
 	- Inferring amenities from the description if the array is empty
 	- Inferring city/state from location or description if missing
 	- Double check Bedrooms and Bathrooms, IsFamilyPreferred (if bachlors are allowed then IsFamilyPreferred is false)  from description
-	- Determining listing type (owner/broker) and dietary preference from description
+	- Determining listing type ("Rent", "Sale", "Flatmate") and owner/broker post (IsOwnerListing or IsBrokerListing bool) and dietary preference from description
 	- Inferring security deposit and maintenance charges from the description if they are missing
 	- Returning only the final cleaned JSON object only json 
 	- If there is any Tech park name or a Land mark in description then append add it in location (like kadubeesanahalli, Embassy Tech Village)
