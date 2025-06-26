@@ -78,9 +78,9 @@ func CleanupJob(property *models.Property) (*models.Property, error) {
 	- Double check Bedrooms and Bathrooms, IsFamilyPreferred (if bachlors are allowed then IsFamilyPreferred is false)  from description
 	- Determining listing type ("Rent", "Sale", "Flatmate") and owner/broker post (IsOwnerListing or IsBrokerListing bool) and dietary preference from description
 	- Inferring security deposit and maintenance charges from the description if they are missing
-	- Returning only the final cleaned JSON object only json 
 	- If there is any Tech park name or a Land mark in description then append add it in location (like kadubeesanahalli, Embassy Tech Village)
 	- If Link is empty in the struct and if contact number exist in description then add one of them as Link.
+	- Returning only the final cleaned JSON object only and only json 
 	`, string(propertyJson))
 
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))

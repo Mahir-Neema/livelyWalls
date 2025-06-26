@@ -7,8 +7,11 @@ import (
 	"backend/utils"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
+	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -120,22 +123,54 @@ func AddProperty(w http.ResponseWriter, r *http.Request) {
 	var photoURLs []string
 
 	if len(files) != 0 {
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		uploadErrChan := make(chan error, len(files))
 		for _, fileHeader := range files {
-			file, err2 := fileHeader.Open()
-			if err2 != nil {
-				utils.WriteErrorResponse(w, "Failed to process file", http.StatusInternalServerError)
-				return
-			}
-			defer file.Close()
+			wg.Add(1)
+			go func(fileHeader *multipart.FileHeader) {
+				defer wg.Done()
 
-			fileName := fmt.Sprintf("/properties/user_%s/%s%s", userID, time.Now().Format("20060102150405"), filepath.Ext(fileHeader.Filename))
-			url, err3 := utils.UploadFileToS3(file, fileHeader, fileName, userID)
-			if err3 != nil {
-				utils.Logger.Printf("Failed to upload file to Supabase: %v", err3)
-				utils.WriteErrorResponse(w, "Failed to upload image", http.StatusInternalServerError)
-				return
+				file, err2 := fileHeader.Open()
+				if err2 != nil {
+					uploadErrChan <- fmt.Errorf("failed to open file: %w", err2)
+					return
+				}
+				defer file.Close()
+
+				fileName := fmt.Sprintf("/properties/user_%s/%s_%s%s",
+					userID,
+					time.Now().Format("20060102150405"),
+					uuid.New().String(),
+					filepath.Ext(fileHeader.Filename),
+				)
+				url, err3 := utils.UploadFileToS3(file, fileHeader, fileName, userID)
+				if err3 != nil {
+					uploadErrChan <- fmt.Errorf("failed to upload file to S3: %w", err3)
+					return
+				}
+
+				mu.Lock()
+				photoURLs = append(photoURLs, url)
+				mu.Unlock()
+			}(fileHeader)
+		}
+
+		go func() {
+			wg.Wait()
+			close(uploadErrChan)
+		}()
+		var uploadErrors []error
+		for uploadErr := range uploadErrChan {
+			uploadErrors = append(uploadErrors, uploadErr)
+		}
+
+		if len(uploadErrors) > 0 {
+			for uploadErr := range uploadErrors {
+				utils.Logger.Printf("File upload error: %v", uploadErr)
 			}
-			photoURLs = append(photoURLs, url)
+			utils.WriteErrorResponse(w, "Failed to upload one or more images", http.StatusInternalServerError)
+			return
 		}
 	}
 
