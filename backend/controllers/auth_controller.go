@@ -106,7 +106,7 @@ func GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 			Role:         "tenant",
 			Picture:      profile.(string),
 		}
-		if err2 := user.Save(); err2 != nil {
+		if _, err2 := user.Save(); err2 != nil {
 			utils.Logger.Printf("Error saving user to database: %v", err2)
 			utils.WriteErrorResponse(w, "Failed to create user", http.StatusInternalServerError)
 			return
@@ -186,13 +186,22 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save user to DB
-	if err := user.Save(); err != nil {
-		utils.Logger.Printf("Error saving user to database: %v", err)
+	userId, err2 := user.Save()
+	if err2 != nil {
+		utils.Logger.Printf("Error saving user to database: %v", err2)
 		utils.WriteErrorResponse(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
 
-	utils.WriteSuccessResponse(w, map[string]string{"message": "User registered successfully"}, http.StatusCreated)
+	// Generate JWT
+	token, err3 := utils.GenerateJWT(userId, user.Role)
+	if err3 != nil {
+		utils.Logger.Printf("JWT generation failed: %v", err3)
+		utils.WriteErrorResponse(w, "Failed to login", http.StatusInternalServerError)
+		return
+	}
+
+	utils.WriteSuccessResponse(w, map[string]string{"message": "User registered successfully", "token": token}, http.StatusCreated)
 }
 
 // Login handles user login

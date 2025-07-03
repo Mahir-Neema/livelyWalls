@@ -1,7 +1,7 @@
 package models
 
 import (
-	"backend/services" 
+	"backend/services"
 	"context"
 	"time"
 
@@ -10,22 +10,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-
 type User struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty"`
-	Email       string             `bson:"email"`
-	PasswordHash string             `bson:"password_hash"` 
-	Name        string             `bson:"name"`
-	Picture     string             `bson:"picture"`
-	Role        string             `bson:"role"`          // e.g., "owner", "tenant", "admin"
-	CreatedAt   time.Time          `bson:"createdAt"`
-	UpdatedAt   time.Time          `bson:"updatedAt"`
+	ID           primitive.ObjectID `bson:"_id,omitempty"`
+	Email        string             `bson:"email"`
+	PasswordHash string             `bson:"password_hash"`
+	Name         string             `bson:"name"`
+	Picture      string             `bson:"picture"`
+	Role         string             `bson:"role"` // e.g., "owner", "tenant", "admin"
+	CreatedAt    time.Time          `bson:"createdAt"`
+	UpdatedAt    time.Time          `bson:"updatedAt"`
 }
 
 func GetUserCollection() *mongo.Collection {
-	return services.GetMongoDB().Collection("users") 
+	return services.GetMongoDB().Collection("users")
 }
-
 
 func FindUserByEmail(email string) (*User, error) {
 	collection := GetUserCollection()
@@ -36,7 +34,6 @@ func FindUserByEmail(email string) (*User, error) {
 	}
 	return &user, nil
 }
-
 
 func FindUserByID(id string) (*User, error) {
 	collection := GetUserCollection()
@@ -52,16 +49,19 @@ func FindUserByID(id string) (*User, error) {
 	return &user, nil
 }
 
-
-func (u *User) Save() error {
+func (u *User) Save() (string, error) {
 	collection := GetUserCollection()
 	u.CreatedAt = time.Now()
 	u.UpdatedAt = time.Now()
-	u.ID = primitive.NewObjectID() 
-	_, err := collection.InsertOne(context.Background(), u)
-	return err
-}
+	u.ID = primitive.NewObjectID()
 
+	_, err := collection.InsertOne(context.Background(), u)
+	if err != nil {
+		return "", err
+	}
+
+	return u.ID.Hex(), nil
+}
 
 func UpdateUser(id string, updatedUser *User) error {
 	collection := GetUserCollection()
@@ -76,7 +76,6 @@ func UpdateUser(id string, updatedUser *User) error {
 	_, err = collection.UpdateOne(context.Background(), bson.M{"_id": objID}, update)
 	return err
 }
-
 
 func DeleteUser(id string) error {
 	collection := GetUserCollection()
