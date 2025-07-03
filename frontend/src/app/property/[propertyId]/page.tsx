@@ -115,18 +115,23 @@ function PropertyDetails() {
 
           {/* Action button (example) */}
           {propertyData.link?.length > 0 ? (
-            <div className="mt-6 text-center">
-              <a
-                href={propertyData.link}
-                target="#"
-                className="bg-blue-600 text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300"
-              >
-                Contact here
-              </a>
-            </div>
-          ) : (
-            <div></div>
-          )}
+            /^\+?\d{10,15}$/.test(propertyData.link) ? (
+              <div className="mt-6 text-center text-lg font-semibold text-gray-800">
+                Contact No: {propertyData.link}
+              </div>
+            ) : (
+              <div className="mt-6 text-center">
+                <a
+                  href={propertyData.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-600 text-white py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300"
+                >
+                  Contact here
+                </a>
+              </div>
+            )
+          ) : null}
         </div>
       </div>
     </div>
