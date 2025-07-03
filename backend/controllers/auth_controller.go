@@ -6,6 +6,8 @@ import (
 	"backend/utils"
 	"context"
 	"encoding/json"
+	"errors"
+	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
@@ -32,6 +34,14 @@ func IsUserRegistered(w http.ResponseWriter, r *http.Request) {
 
 	existingUser, err := models.FindUserByEmail(payload.Email)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			utils.Logger.Printf("User %v does not exist", payload.Email)
+			utils.WriteSuccessResponse(w, map[string]string{
+				"email":            payload.Email,
+				"isUserRegistered": "false",
+			}, http.StatusOK)
+			return
+		}
 		utils.Logger.Printf("Error finding user by email: %v", err)
 		utils.WriteErrorResponse(w, "Server Error while Finding user", http.StatusInternalServerError)
 		return
