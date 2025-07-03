@@ -11,6 +11,48 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func IsUserRegistered(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		utils.WriteErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var payload struct {
+		Email string `json:"email"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		utils.WriteErrorResponse(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	if !utils.ValidateEmail(payload.Email) {
+		utils.WriteErrorResponse(w, "Invalid email format", http.StatusBadRequest)
+		return
+	}
+
+	existingUser, err := models.FindUserByEmail(payload.Email)
+	if err != nil {
+		utils.Logger.Printf("Error finding user by email: %v", err)
+		utils.WriteErrorResponse(w, "Server Error while Finding user", http.StatusInternalServerError)
+		return
+	}
+
+	if existingUser == nil {
+		utils.Logger.Printf("User %v does not exist", payload.Email)
+		utils.WriteSuccessResponse(w, map[string]string{
+			"email":            payload.Email,
+			"isUserRegistered": "false",
+		}, http.StatusOK)
+		return
+	}
+	utils.WriteSuccessResponse(w, map[string]string{
+		"email":            existingUser.Email,
+		"name":             existingUser.Name,
+		"profilePicture":   existingUser.Picture,
+		"isUserRegistered": "true",
+	}, http.StatusOK)
+}
+
 func GoogleSignIn(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		IDToken string `json:"idToken"`
@@ -92,6 +134,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 
 	// Parse request payload
 	var payload struct {
+		Name     string `json:"name"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
@@ -110,37 +153,8 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user already exists
-	existingUser, err := models.FindUserByEmail(payload.Email)
-	if err != nil {
-		utils.Logger.Printf("Error finding user by email: %v", err)
-		//utils.WriteErrorResponse(w, "Server Error while Finding user", http.StatusInternalServerError)
-	}
-
-	if existingUser != nil {
-		// Verify password
-		err = bcrypt.CompareHashAndPassword([]byte(existingUser.PasswordHash), []byte(payload.Password))
-		if err != nil {
-			utils.WriteErrorResponse(w, "Invalid credentials", http.StatusUnauthorized)
-			return
-		}
-
-		// Generate JWT for existing user
-		token, err2 := utils.GenerateJWT(existingUser.ID.Hex(), existingUser.Role)
-		if err2 != nil {
-			utils.Logger.Printf("JWT generation failed: %v", err2)
-			utils.WriteErrorResponse(w, "Failed to login", http.StatusInternalServerError)
-			return
-		}
-
-		// Respond with the login success and token
-		utils.WriteSuccessResponse(w, map[string]string{
-			"token":   token,
-			"name":    existingUser.Name,
-			"role":    existingUser.Role,
-			"picture": existingUser.Picture,
-			"message": "Login successful",
-		}, http.StatusOK)
+	if len(payload.Name) == 0 {
+		utils.WriteErrorResponse(w, "Name is required", http.StatusBadRequest)
 		return
 	}
 
@@ -156,6 +170,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	user := models.User{
 		Email:        payload.Email,
 		PasswordHash: string(hashedPassword),
+		Name:         payload.Name,
 		Role:         "tenant",
 		Picture:      "/default-picture",
 	}
