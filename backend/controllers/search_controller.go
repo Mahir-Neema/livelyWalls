@@ -36,6 +36,21 @@ func SearchProperties(w http.ResponseWriter, r *http.Request) {
 			utils.Logger.Printf("Error incrementing searched place count in Redis: %v", err)
 		}
 	}
+	if minRent, ok := filters["minRent"].(float64); ok {
+		filters["minRent"] = minRent
+	}
+	if maxRent, ok := filters["maxRent"].(float64); ok {
+		filters["maxRent"] = maxRent
+	}
+	if isVegetarianPreferred, ok := filters["isVegetarianPreferred"].(bool); ok {
+		filters["isVegetarianPreferred"] = isVegetarianPreferred
+	}
+	if isFamilyPreferred, ok := filters["isFamilyPreferred"].(bool); ok {
+		filters["isFamilyPreferred"] = isFamilyPreferred
+	}
+	if genderPreference, ok := filters["genderPreference"].(string); ok && genderPreference != "" {
+		filters["genderPreference"] = genderPreference
+	}
 
 	properties, err := models.SearchProperties(filters, limit)
 	if err != nil {
