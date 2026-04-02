@@ -3,6 +3,7 @@ import { useSearchParams } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useState, useEffect, Suspense } from "react";
 import SearchedPropertyCard from "../components/SearchedPropertyCard";
+import Toggle from "../components/Toggle"; // Added Toggle import
 import { setSearchedProperties } from "@/lib/features/property/propertySlice";
 
 const SearchPageContent = () => {
@@ -71,26 +72,17 @@ const SearchPageContent = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4">
-      <div className="flex justify-between">
-        <h1 className="text-xl font-semibold text-gray-800 mb-6">
+      <div className="flex justify-between items-center mb-6"> {/** updated layout */}
+        <h1 className="text-xl font-semibold text-gray-800">
           {filteredProperties.length} properties found for {location}
         </h1>
 
-        <div className="mb-6 flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="no-broker"
-            checked={isNoBroker}
-            onChange={() => setIsNoBroker(!isNoBroker)}
-            className="w-5 h-5 border border-gray-300 rounded-lg text-blue-600"
-          />
-          <label
-            htmlFor="no-broker"
-            className="text-lg font-medium text-gray-800"
-          >
-            No brokerage
-          </label>
-        </div>
+        <Toggle
+          id="no-broker"
+          label="No brokerage"
+          checked={isNoBroker}
+          onChange={() => setIsNoBroker(!isNoBroker)}
+        />
       </div>
 
       <main className="justify-items-center">
