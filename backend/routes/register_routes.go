@@ -11,6 +11,7 @@ func RegisterRoutes(r *mux.Router) {
 	RegisterAuthRoutes(r)
 	RegisterSearchRoutes(r)
 	RegisterViewsRoutes(r)
+	RegisterAIRoutes(r)
 
 	// Public Property Routes
 	r.HandleFunc("/api/properties", controllers.GetProperties).Methods("GET")

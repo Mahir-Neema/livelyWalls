@@ -23,7 +23,7 @@ func CleanupJob(property *models.Property) (*models.Property, error) {
 	}
 	defer client.Close()
 
-	model := client.GenerativeModel("gemini-1.5-flash")
+	model := client.GenerativeModel("gemini-flash-latest")
 
 	propertyJson, err := json.MarshalIndent(property, "", "  ")
 	if err != nil {
