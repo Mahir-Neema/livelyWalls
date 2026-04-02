@@ -155,77 +155,142 @@ func DeleteProperty(id string) error {
 // SearchProperties performs a search on properties based on filters
 func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property, error) {
 	collection := GetPropertyCollection()
-	query := bson.M{}
+	ctx := context.Background()
 
-	// Filters
-	if city, ok := filters["city"].(string); ok && city != "" {
-		query["city"] = bson.M{"$regex": primitive.Regex{Pattern: city, Options: "i"}} // Case-insensitive search
+	if limit <= 0 {
+		limit = 10
 	}
 
-	// location filter
-	if location, ok := filters["location"].(string); ok && location != "" {
-		query["location"] = bson.M{"$regex": primitive.Regex{Pattern: location, Options: "i"}} // Case-insensitive search
+	// Extract location separately
+	location, hasLocation := filters["location"].(string)
+
+	// Build common filters (EXCEPT location)
+	matchStage := bson.M{}
+
+	if city, ok := filters["city"].(string); ok && city != "" {
+		matchStage["city"] = bson.M{"$regex": primitive.Regex{Pattern: city, Options: "i"}}
 	}
 
 	if propertyType, ok := filters["propertyType"].(string); ok && propertyType != "" {
-		query["propertyType"] = propertyType
+		matchStage["propertyType"] = propertyType
 	}
+
 	if listingType, ok := filters["listingType"].(string); ok && listingType != "" {
-		query["listingType"] = listingType
+		matchStage["listingType"] = listingType
 	}
+
 	if minRent, ok := filters["minRent"].(float64); ok {
-		query["rent"] = bson.M{"$gte": minRent}
+		matchStage["rent"] = bson.M{"$gte": minRent}
 	}
+
 	if maxRent, ok := filters["maxRent"].(float64); ok {
-		if _, exists := query["rent"]; exists {
-			query["rent"].(bson.M)["$lte"] = maxRent
+		if _, exists := matchStage["rent"]; exists {
+			matchStage["rent"].(bson.M)["$lte"] = maxRent
 		} else {
-			query["rent"] = bson.M{"$lte": maxRent}
+			matchStage["rent"] = bson.M{"$lte": maxRent}
 		}
 	}
+
 	if isAvailable, ok := filters["isAvailable"].(bool); ok {
-		query["isAvailable"] = isAvailable
+		matchStage["isAvailable"] = isAvailable
 	}
 
-	// New filters for IsVegetarianPreferred, IsFamilyPreferred, GenderPreference
 	if isVegetarianPreferred, ok := filters["isVegetarianPreferred"].(bool); ok {
-		query["isVegetarianPreferred"] = isVegetarianPreferred
+		matchStage["isVegetarianPreferred"] = isVegetarianPreferred
 	}
+
 	if isFamilyPreferred, ok := filters["isFamilyPreferred"].(bool); ok {
-		query["isFamilyPreferred"] = isFamilyPreferred
+		matchStage["isFamilyPreferred"] = isFamilyPreferred
 	}
+
 	if genderPreference, ok := filters["genderPreference"].(string); ok && genderPreference != "" {
-		query["genderPreference"] = bson.M{"$regex": primitive.Regex{Pattern: genderPreference, Options: "i"}} // Case-insensitive search
+		matchStage["genderPreference"] = bson.M{
+			"$regex": primitive.Regex{Pattern: genderPreference, Options: "i"},
+		}
 	}
-
-	// Sort and limit
-	findOptions := options.Find()
-	findOptions.SetSort(bson.M{"createdAt": -1})
-
-	if limit <= 0 {
-		limit = 10 // Default limit
-	}
-	findOptions.SetLimit(limit)
-
-	// Search query
-	cursor, err := collection.Find(context.Background(), query, findOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(context.Background())
 
 	var properties []*Property
-	for cursor.Next(context.Background()) {
-		var property Property
-		if err := cursor.Decode(&property); err != nil {
+
+	// STEP 1: Try Atlas Search (if location present and meaningful)
+	if hasLocation && location != "" && len(location) >= 2 {
+
+		pipeline := mongo.Pipeline{
+			{
+				{"$search", bson.M{
+					"index": "location_autocomplete",
+					"autocomplete": bson.M{
+						"query": location,
+						"path":  "location",
+						"fuzzy": bson.M{
+							"maxEdits":     1,
+							"prefixLength": 2,
+						},
+					},
+				}},
+			},
+			{
+				{"$match", matchStage},
+			},
+			{
+				{"$sort", bson.M{"createdAt": -1}},
+			},
+			{
+				{"$limit", limit},
+			},
+		}
+
+		cursor, err := collection.Aggregate(ctx, pipeline)
+		if err != nil {
 			return nil, err
 		}
-		properties = append(properties, &property)
+
+		for cursor.Next(ctx) {
+			var property Property
+			if err := cursor.Decode(&property); err != nil {
+				cursor.Close(ctx)
+				return nil, err
+			}
+			properties = append(properties, &property)
+		}
+		cursor.Close(ctx)
 	}
 
-	if err := cursor.Err(); err != nil {
-		return nil, err
-	}
+	// STEP 2: Fallback to regex if no results
+	// STEP 2: Fallback to regex if no results
+    if len(properties) == 0 && hasLocation && location != "" {
+
+    	query := bson.M{}
+    	for k, v := range matchStage {
+    		query[k] = v
+    	}
+
+    	query["location"] = bson.M{
+    		"$regex": primitive.Regex{Pattern: location, Options: "i"},
+    	}
+
+    	findOptions := options.Find().
+    		SetSort(bson.M{"createdAt": -1}).
+    		SetLimit(limit)
+
+    	cursor, err := collection.Find(ctx, query, findOptions)
+    	if err != nil {
+    		return nil, err
+    	}
+    	defer cursor.Close(ctx)
+
+    	for cursor.Next(ctx) {
+    		var property Property
+    		if err := cursor.Decode(&property); err != nil {
+    			return nil, err
+    		}
+    		properties = append(properties, &property)
+    	}
+
+    	if err := cursor.Err(); err != nil {
+    		return nil, err
+    	}
+    }
+
 	return properties, nil
 }
 
