@@ -7,6 +7,7 @@ import Toggle from "../components/Toggle"; // Added Toggle import
 import NearbySuggestions from "../components/NearbySuggestions"; // Added AI component
 import { setSearchedProperties } from "@/lib/features/property/propertySlice";
 import { useRouter } from "next/navigation";
+import AIPropertyChat from "../components/AIPropertyChat";
 
 const SearchPageContent = () => {
   const dispatch = useAppDispatch();
@@ -148,6 +149,12 @@ const SearchPageContent = () => {
         {/* Right Sidebar for AI Suggestions */}
         <aside className="w-full lg:w-1/4 order-1 lg:order-2">
           <div className="sticky top-24">
+            <AIPropertyChat
+              onPropertiesSuggested={(properties) => {
+                dispatch(setSearchedProperties(properties));
+                setLoading(false);
+              }}
+            />
             <NearbySuggestions
               locations={nearbySuggestions}
               isLoading={isAiLoading}

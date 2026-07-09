@@ -80,7 +80,7 @@ func GetTopProperties(limit int) ([]*Property, error) {
 	// Query to find properties sorted by views in descending order
 	cursor, err := collection.Find(
 		context.Background(),
-		bson.M{},                                                           // Empty filter to match all properties
+		bson.M{}, // Empty filter to match all properties
 		options.Find().SetSort(bson.M{"views": -1}).SetLimit(int64(limit)), // Sort by 'views' descending and limit the number of results
 	)
 	if err != nil {
@@ -191,8 +191,24 @@ func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property,
 		}
 	}
 
+	if bedrooms, ok := filters["bedrooms"].(int); ok && bedrooms > 0 {
+		matchStage["bedrooms"] = bedrooms
+	} else if bedrooms, ok := filters["bedrooms"].(float64); ok && bedrooms > 0 {
+		matchStage["bedrooms"] = int(bedrooms)
+	}
+
+	if bathrooms, ok := filters["bathrooms"].(int); ok && bathrooms > 0 {
+		matchStage["bathrooms"] = bathrooms
+	} else if bathrooms, ok := filters["bathrooms"].(float64); ok && bathrooms > 0 {
+		matchStage["bathrooms"] = int(bathrooms)
+	}
+
 	if isAvailable, ok := filters["isAvailable"].(bool); ok {
 		matchStage["isAvailable"] = isAvailable
+	}
+
+	if isBrokerListing, ok := filters["isBrokerListing"].(bool); ok {
+		matchStage["isBrokerListing"] = isBrokerListing
 	}
 
 	if isVegetarianPreferred, ok := filters["isVegetarianPreferred"].(bool); ok {
@@ -257,39 +273,39 @@ func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property,
 
 	// STEP 2: Fallback to regex if no results
 	// STEP 2: Fallback to regex if no results
-    if len(properties) == 0 && hasLocation && location != "" {
+	if len(properties) == 0 && hasLocation && location != "" {
 
-    	query := bson.M{}
-    	for k, v := range matchStage {
-    		query[k] = v
-    	}
+		query := bson.M{}
+		for k, v := range matchStage {
+			query[k] = v
+		}
 
-    	query["location"] = bson.M{
-    		"$regex": primitive.Regex{Pattern: location, Options: "i"},
-    	}
+		query["location"] = bson.M{
+			"$regex": primitive.Regex{Pattern: location, Options: "i"},
+		}
 
-    	findOptions := options.Find().
-    		SetSort(bson.M{"createdAt": -1}).
-    		SetLimit(limit)
+		findOptions := options.Find().
+			SetSort(bson.M{"createdAt": -1}).
+			SetLimit(limit)
 
-    	cursor, err := collection.Find(ctx, query, findOptions)
-    	if err != nil {
-    		return nil, err
-    	}
-    	defer cursor.Close(ctx)
+		cursor, err := collection.Find(ctx, query, findOptions)
+		if err != nil {
+			return nil, err
+		}
+		defer cursor.Close(ctx)
 
-    	for cursor.Next(ctx) {
-    		var property Property
-    		if err := cursor.Decode(&property); err != nil {
-    			return nil, err
-    		}
-    		properties = append(properties, &property)
-    	}
+		for cursor.Next(ctx) {
+			var property Property
+			if err := cursor.Decode(&property); err != nil {
+				return nil, err
+			}
+			properties = append(properties, &property)
+		}
 
-    	if err := cursor.Err(); err != nil {
-    		return nil, err
-    	}
-    }
+		if err := cursor.Err(); err != nil {
+			return nil, err
+		}
+	}
 
 	return properties, nil
 }
