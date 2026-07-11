@@ -26,7 +26,8 @@ func GetNearbyLocations(w http.ResponseWriter, r *http.Request) {
 }
 
 type propertyChatRequest struct {
-	Message string `json:"message"`
+	Message         string                         `json:"message"`
+	PreviousFilters *services.PropertySearchIntent `json:"previousFilters,omitempty"`
 }
 
 type propertyChatResponse struct {
@@ -48,7 +49,7 @@ func PropertyChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := services.ExtractPropertySearchIntent(r.Context(), request.Message)
+	intent, err := services.ExtractPropertySearchIntent(r.Context(), request.Message, request.PreviousFilters)
 	if err != nil {
 		utils.Logger.Printf("Error extracting OpenAI property intent: %v", err)
 		utils.WriteErrorResponse(w, "Failed to understand property request", http.StatusInternalServerError)
@@ -61,6 +62,9 @@ func PropertyChat(w http.ResponseWriter, r *http.Request) {
 		utils.Logger.Printf("Error searching AI property filters: %v", err)
 		utils.WriteErrorResponse(w, "Failed to search properties", http.StatusInternalServerError)
 		return
+	}
+	if properties == nil {
+		properties = []*models.Property{}
 	}
 
 	utils.WriteSuccessResponse(w, propertyChatResponse{

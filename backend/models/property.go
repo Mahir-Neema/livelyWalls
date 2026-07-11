@@ -4,6 +4,8 @@ import (
 	"backend/services"
 	"backend/utils"
 	"context"
+	"regexp"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -208,7 +210,14 @@ func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property,
 	}
 
 	if isBrokerListing, ok := filters["isBrokerListing"].(bool); ok {
-		matchStage["isBrokerListing"] = isBrokerListing
+		if isBrokerListing {
+			matchStage["isBrokerListing"] = true
+		} else {
+			matchStage["isBrokerListing"] = bson.M{"$ne": true}
+			matchStage["description"] = bson.M{
+				"$not": primitive.Regex{Pattern: "brokerage applicable|brokerage applies|brokerage\\s*applicable|broker fee", Options: "i"},
+			}
+		}
 	}
 
 	if isVegetarianPreferred, ok := filters["isVegetarianPreferred"].(bool); ok {
@@ -221,7 +230,7 @@ func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property,
 
 	if genderPreference, ok := filters["genderPreference"].(string); ok && genderPreference != "" {
 		matchStage["genderPreference"] = bson.M{
-			"$regex": primitive.Regex{Pattern: genderPreference, Options: "i"},
+			"$regex": primitive.Regex{Pattern: "^" + genderPreference + "$", Options: "i"},
 		}
 	}
 
@@ -238,8 +247,8 @@ func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property,
 						"query": location,
 						"path":  "location",
 						"fuzzy": bson.M{
-							"maxEdits":     1,
-							"prefixLength": 2,
+							"maxEdits":     2,
+							"prefixLength": 1,
 						},
 					},
 				}},
@@ -272,42 +281,204 @@ func SearchProperties(filters map[string]interface{}, limit int64) ([]*Property,
 	}
 
 	// STEP 2: Fallback to regex if no results
-	// STEP 2: Fallback to regex if no results
 	if len(properties) == 0 && hasLocation && location != "" {
+		query := cloneBSONMap(matchStage)
+		addFlexibleLocationMatch(query, location, false)
 
-		query := bson.M{}
-		for k, v := range matchStage {
-			query[k] = v
-		}
-
-		query["location"] = bson.M{
-			"$regex": primitive.Regex{Pattern: location, Options: "i"},
-		}
-
-		findOptions := options.Find().
-			SetSort(bson.M{"createdAt": -1}).
-			SetLimit(limit)
-
-		cursor, err := collection.Find(ctx, query, findOptions)
+		regexProperties, err := findProperties(ctx, collection, query, limit)
 		if err != nil {
 			return nil, err
 		}
-		defer cursor.Close(ctx)
+		properties = append(properties, regexProperties...)
+	}
 
-		for cursor.Next(ctx) {
-			var property Property
-			if err := cursor.Decode(&property); err != nil {
-				return nil, err
-			}
-			properties = append(properties, &property)
-		}
+	// STEP 3: Search location-like fields with tokenized user input.
+	if len(properties) == 0 && hasLocation && location != "" {
+		query := cloneBSONMap(matchStage)
+		addFlexibleLocationMatch(query, location, true)
 
-		if err := cursor.Err(); err != nil {
+		flexibleProperties, err := findProperties(ctx, collection, query, limit)
+		if err != nil {
 			return nil, err
 		}
+		properties = append(properties, flexibleProperties...)
+	}
+
+	// STEP 4: Gender preference usually belongs to flatmate inventory. If AI
+	// carried over "Rent" from context, try flatmate before broader relaxation.
+	if len(properties) == 0 && hasLocation && location != "" && hasGenderPreference(matchStage) && listingTypeIs(matchStage, "Rent") {
+		flatmateMatch := cloneBSONMap(matchStage)
+		flatmateMatch["listingType"] = "Flatmate"
+
+		query := cloneBSONMap(flatmateMatch)
+		addFlexibleLocationMatch(query, location, true)
+
+		flatmateProperties, err := findProperties(ctx, collection, query, limit)
+		if err != nil {
+			return nil, err
+		}
+		properties = append(properties, flatmateProperties...)
+	}
+
+	// STEP 5: Relax overly-specific AI filters. Users often say "flat on rent"
+	// casually, while inventory may be stored as Apartment or Flatmate.
+	if len(properties) == 0 && hasLocation && location != "" {
+		relaxedMatch := cloneBSONMap(matchStage)
+		delete(relaxedMatch, "propertyType")
+
+		query := cloneBSONMap(relaxedMatch)
+		addFlexibleLocationMatch(query, location, true)
+
+		relaxedProperties, err := findProperties(ctx, collection, query, limit)
+		if err != nil {
+			return nil, err
+		}
+		properties = append(properties, relaxedProperties...)
+	}
+
+	if len(properties) == 0 && hasLocation && location != "" {
+		relaxedMatch := cloneBSONMap(matchStage)
+		delete(relaxedMatch, "propertyType")
+		delete(relaxedMatch, "listingType")
+
+		query := cloneBSONMap(relaxedMatch)
+		addFlexibleLocationMatch(query, location, true)
+
+		relaxedProperties, err := findProperties(ctx, collection, query, limit)
+		if err != nil {
+			return nil, err
+		}
+		properties = append(properties, relaxedProperties...)
+	}
+
+	if len(properties) == 0 && hasLocation && location != "" {
+		relaxedMatch := cloneBSONMap(matchStage)
+		delete(relaxedMatch, "propertyType")
+		delete(relaxedMatch, "listingType")
+		delete(relaxedMatch, "isBrokerListing")
+		delete(relaxedMatch, "description")
+
+		query := cloneBSONMap(relaxedMatch)
+		addFlexibleLocationMatch(query, location, true)
+
+		relaxedProperties, err := findProperties(ctx, collection, query, limit)
+		if err != nil {
+			return nil, err
+		}
+		properties = append(properties, relaxedProperties...)
+	}
+
+	if len(properties) == 0 && !hasLocation {
+		noLocationProperties, err := findProperties(ctx, collection, matchStage, limit)
+		if err != nil {
+			return nil, err
+		}
+		properties = append(properties, noLocationProperties...)
 	}
 
 	return properties, nil
+}
+
+func hasGenderPreference(matchStage bson.M) bool {
+	_, ok := matchStage["genderPreference"]
+	return ok
+}
+
+func listingTypeIs(matchStage bson.M, expected string) bool {
+	listingType, ok := matchStage["listingType"].(string)
+	return ok && strings.EqualFold(listingType, expected)
+}
+
+func findProperties(ctx context.Context, collection *mongo.Collection, query bson.M, limit int64) ([]*Property, error) {
+	findOptions := options.Find().
+		SetSort(bson.M{"createdAt": -1}).
+		SetLimit(limit)
+
+	cursor, err := collection.Find(ctx, query, findOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var properties []*Property
+	for cursor.Next(ctx) {
+		var property Property
+		if err := cursor.Decode(&property); err != nil {
+			return nil, err
+		}
+		properties = append(properties, &property)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return properties, nil
+}
+
+func cloneBSONMap(source bson.M) bson.M {
+	clone := bson.M{}
+	for key, value := range source {
+		clone[key] = value
+	}
+	return clone
+}
+
+func addFlexibleLocationMatch(query bson.M, location string, includeVariants bool) {
+	var clauses []bson.M
+	for _, pattern := range locationSearchPatterns(location, includeVariants) {
+		regex := primitive.Regex{Pattern: pattern, Options: "i"}
+		clauses = append(clauses,
+			bson.M{"location": bson.M{"$regex": regex}},
+			bson.M{"area": bson.M{"$regex": regex}},
+			bson.M{"societyName": bson.M{"$regex": regex}},
+		)
+	}
+
+	if len(clauses) > 0 {
+		query["$or"] = clauses
+	}
+}
+
+func locationSearchPatterns(location string, includeVariants bool) []string {
+	normalized := strings.ToLower(strings.TrimSpace(location))
+	if normalized == "" {
+		return nil
+	}
+
+	seen := map[string]bool{}
+	var patterns []string
+	add := func(value string) {
+		cleaned := strings.TrimSpace(value)
+		if cleaned == "" {
+			return
+		}
+		key := strings.ToLower(cleaned)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		patterns = append(patterns, regexp.QuoteMeta(cleaned))
+	}
+
+	add(location)
+
+	parts := strings.FieldsFunc(location, func(r rune) bool {
+		return r == ',' || r == '-' || r == '/'
+	})
+	for _, part := range parts {
+		add(part)
+	}
+
+	if includeVariants {
+		for _, word := range strings.Fields(location) {
+			if len(word) >= 4 {
+				add(word)
+			}
+		}
+	}
+
+	return patterns
 }
 
 func IncrementPropertyViews(id string, count int) error {

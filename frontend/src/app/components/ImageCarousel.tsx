@@ -5,9 +5,10 @@ import { EmblaOptionsType } from "embla-carousel";
 type ImageCarouselProps = {
   slides: string[]; // Array of image URLs
   options?: EmblaOptionsType;
+  className?: string; // Additional classes for the image
 };
 
-const ImageCarousel: React.FC<ImageCarouselProps> = ({ slides, options }) => {
+const ImageCarousel: React.FC<ImageCarouselProps> = ({ slides, options, className }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [emblaRef, emblaApi] = useEmblaCarousel(options);
 
@@ -32,7 +33,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ slides, options }) => {
               <img
                 src={src}
                 alt={`Slide ${index + 1}`}
-                className="w-full h-64 object-cover"
+                className={`w-full ${className || "h-64"} object-cover`}
               />
             </div>
           ))}
@@ -40,13 +41,13 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ slides, options }) => {
       </div>
 
       {/* Navigation dots */}
-      <div className="flex justify-center mt-2 space-x-2">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 bg-white/20 backdrop-blur-md px-3 py-2 rounded-full border border-white/30 z-20 transition-opacity duration-300 group-hover:bg-white/40">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => emblaApi && emblaApi.scrollTo(index)}
-            className={`w-2 h-2 rounded-full ${
-              index === selectedIndex ? "bg-blue-500" : "bg-gray-300"
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              index === selectedIndex ? "bg-white w-4" : "bg-white/50 hover:bg-white/80"
             }`}
           />
         ))}

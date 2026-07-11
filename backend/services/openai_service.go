@@ -36,7 +36,7 @@ type PropertyChatIntentResponse struct {
 	Filters            PropertySearchIntent `json:"filters"`
 }
 
-func ExtractPropertySearchIntent(ctx context.Context, message string) (*PropertyChatIntentResponse, error) {
+func ExtractPropertySearchIntent(ctx context.Context, message string, previousFilters *PropertySearchIntent) (*PropertyChatIntentResponse, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is not set")
@@ -51,7 +51,7 @@ func ExtractPropertySearchIntent(ctx context.Context, message string) (*Property
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	prompt := buildPropertyIntentPrompt(message)
+	prompt := buildPropertyIntentPrompt(message, previousFilters)
 	resp, err := client.Responses.New(ctx, responses.ResponseNewParams{
 		Model: openai.ChatModel(model),
 		Input: responses.ResponseNewParamsInputUnion{
@@ -74,21 +74,62 @@ func ExtractPropertySearchIntent(ctx context.Context, message string) (*Property
 		defaultLimit := int64(10)
 		parsed.Filters.Limit = &defaultLimit
 	}
+	normalizePropertyIntent(&parsed.Filters, message)
 
 	return &parsed, nil
 }
 
-func buildPropertyIntentPrompt(message string) string {
+func normalizePropertyIntent(filters *PropertySearchIntent, message string) {
+	if filters == nil || filters.GenderPreference == nil || filters.ListingType == nil {
+		return
+	}
+
+	normalizedMessage := strings.ToLower(message)
+	hasGenderWord := strings.Contains(normalizedMessage, "male") ||
+		strings.Contains(normalizedMessage, "female")
+	hasExplicitRentOrSale := strings.Contains(normalizedMessage, "rent") ||
+		strings.Contains(normalizedMessage, "sale") ||
+		strings.Contains(normalizedMessage, "buy")
+
+	if hasGenderWord && !hasExplicitRentOrSale && strings.EqualFold(*filters.ListingType, "Rent") {
+		flatmate := "Flatmate"
+		filters.ListingType = &flatmate
+	}
+}
+
+func buildPropertyIntentPrompt(message string, previousFilters *PropertySearchIntent) string {
+	previousFilterJSON := "{}"
+	if previousFilters != nil {
+		if jsonData, err := json.Marshal(previousFilters); err == nil {
+			previousFilterJSON = string(jsonData)
+		}
+	}
+
 	return fmt.Sprintf(`You are the search assistant for SmilingBricks, an Indian rental/property app.
 
 Convert the user's natural-language request into property search filters.
 Return only valid JSON. Do not wrap it in markdown.
+
+You may receive previous filters from the same chat session.
+- Merge the latest user request with previous filters.
+- Preserve previous filters when the latest request is a refinement like "2BHK", "make it no broker", or "under 60k".
+- The latest user request overrides previous filters when it clearly changes a field.
+- Clear a previous filter only if the user explicitly says "any", "remove", "doesn't matter", or similar for that field.
+- If no previous filter is useful, ignore it.
+- If the latest user request is only a location or locality name, search broadly for that location.
+- Do not infer listingType as Rent from a location-only request.
+- Do not ask for budget or rent/sale just because the user only gave a location.
 
 Allowed filter values:
 - propertyType: "Flat", "Apartment", "House", "Studio"
 - listingType: "Rent", "Sale", "Flatmate"
 - genderPreference: "Male", "Female", "Any"
 - rent values must be numbers in INR
+- "flatmate" describes listingType, not propertyType
+- do not infer propertyType from "BHK" or "flatmate"; only set propertyType when the user explicitly says apartment, flat, house, or studio
+- only set listingType when the user explicitly says rent, sale, flatmate, roommate, room, or sharing
+- if the latest request adds only "male" or "female" without explicitly saying rent or sale, prefer listingType "Flatmate" because gender preference is normally flatmate inventory
+- do not preserve a previous listingType of "Rent" when the latest request adds only a male/female preference
 - use isBrokerListing=false for no-broker/direct-owner/owner-only requests
 - use maxRent for phrases like "under 40k"
 - use bedrooms for "1BHK", "2 BHK", etc.
@@ -117,7 +158,8 @@ JSON shape:
   }
 }
 
-User request: %q`, message)
+Previous filters: %s
+Latest user request: %q`, previousFilterJSON, message)
 }
 
 func cleanJSONResponse(text string) string {

@@ -6,13 +6,34 @@ import { IoSend } from "react-icons/io5";
 import { Property } from "@/models/Property";
 
 interface AIPropertyChatProps {
-  onPropertiesSuggested: (properties: Property[]) => void;
+  onPropertiesSuggested: (
+    properties: Property[],
+    filters: PropertySearchFilters
+  ) => void;
 }
 
 interface PropertyChatResponse {
   reply: string;
   clarifyingQuestion?: string;
+  filters: PropertySearchFilters;
   properties: Property[];
+}
+
+interface PropertySearchFilters {
+  location?: string | null;
+  city?: string | null;
+  propertyType?: string | null;
+  listingType?: string | null;
+  minRent?: number | null;
+  maxRent?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  isAvailable?: boolean | null;
+  isBrokerListing?: boolean | null;
+  isVegetarianPreferred?: boolean | null;
+  isFamilyPreferred?: boolean | null;
+  genderPreference?: string | null;
+  limit?: number | null;
 }
 
 const API_BASE_URL =
@@ -22,6 +43,9 @@ function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
   const [message, setMessage] = useState("");
   const [assistantReply, setAssistantReply] = useState(
     "Tell me what you need, like 2BHK near Bellandur under 45k with no broker."
+  );
+  const [lastFilters, setLastFilters] = useState<PropertySearchFilters | null>(
+    null
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -39,7 +63,10 @@ function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: trimmedMessage }),
+        body: JSON.stringify({
+          message: trimmedMessage,
+          previousFilters: lastFilters,
+        }),
       });
 
       if (!response.ok) {
@@ -54,7 +81,8 @@ function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
           ? `${data.reply} ${data.clarifyingQuestion}`
           : data.reply
       );
-      onPropertiesSuggested(data.properties || []);
+      setLastFilters(data.filters || null);
+      onPropertiesSuggested(data.properties || [], data.filters);
       setMessage("");
     } catch (err) {
       console.error("AI property chat error:", err);

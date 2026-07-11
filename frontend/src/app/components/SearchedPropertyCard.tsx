@@ -17,37 +17,51 @@ function SearchedPropertyCard({ property }: PropertyCardProps) {
   return (
     <div
       onClick={handleCardClick}
-      className="flex border border-gray-300 rounded-lg m-4 overflow-hidden shadow-md w-full max-w-2xl cursor-pointer transition-transform duration-300 hover:scale-105"
+      className="flex border border-gray-100 rounded-2xl m-4 overflow-hidden shadow-sm w-full max-w-2xl cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl bg-white group relative"
     >
       {/* Image Section */}
-      <div className="w-1/3 h-40 overflow-hidden">
+      <div className="w-1/3 h-48 overflow-hidden relative rounded-l-2xl">
         <img
           src={property.photos?.[0] || "/example3.png"}
           alt="Property"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
-        <div className="absolute mt-2 px-2 text-white text-xs bg-gray-900 bg-opacity-75 whitespace-nowrap -translate-y-10">
-          {property.isBrokerListing ? "+Brokerage" : "Owner's Listing"}
+        <div className="absolute bottom-2 left-2 px-2 py-1 text-white text-[10px] font-bold uppercase tracking-wider bg-gray-900/60 backdrop-blur-md rounded-md">
+          {property.isBrokerListing ? "Broker Meta" : "Direct Owner"}
         </div>
       </div>
 
       {/* Details Section */}
-      <div className="w-2/3 p-4 flex flex-col justify-between relative">
-        <h3 className="text-lg font-semibold mb-1">
-          {property.listingType === "Flatmate"
-            ? property.genderPreference?.length < 8
-              ? `${property.genderPreference} ${property.listingType}`
-              : property.listingType
-            : `${property.propertyType} for ${property.listingType}`}
-        </h3>
-        <p className="text-gray-600">{property.location}</p>
-        <p className="text-gray-600">
-          {property.bedrooms} Beds | {property.bathrooms} Baths
-        </p>
-        <div className="text-gray-400 text-sm">
-          {property.isVegetarianPreferred && <p>Vegetarian Preferred</p>}
+      <div className="w-2/3 p-5 flex flex-col justify-between">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
+            {property.listingType === "Flatmate"
+              ? property.genderPreference?.length < 8
+                ? `${property.genderPreference} ${property.listingType}`
+                : property.listingType
+              : `${property.propertyType} for ${property.listingType}`}
+          </h3>
+          <p className="text-gray-500 font-medium flex items-center text-sm">
+            <span className="truncate">{property.location}</span>
+          </p>
+          <div className="flex gap-4 mt-3">
+            <div className="flex items-center space-x-1 text-gray-400 text-sm">
+              <span className="font-bold text-gray-700">{property.bedrooms}</span>
+              <span>BHK</span>
+            </div>
+            <div className="flex items-center space-x-1 text-gray-400 text-sm border-l pl-4 border-gray-100">
+               <span className="font-bold text-gray-700">{property.bathrooms}</span>
+               <span>Bath</span>
+            </div>
+          </div>
         </div>
-        <p className="font-bold text-lg">₹{property.rent}</p>
+        
+        <div className="flex justify-between items-end mt-4">
+          <p className="font-extrabold text-2xl text-blue-600">
+            ₹{property.rent.toLocaleString()}
+            <span className="text-sm font-medium text-gray-400 ml-1">/mo</span>
+          </p>
+        </div>
       </div>
     </div>
   );

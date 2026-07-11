@@ -183,7 +183,7 @@ function Navbar() {
   };
 
   return (
-    <nav className="bg-gray-100 py-4 px-6 sticky top-0 z-10">
+    <nav className="bg-gray-100 py-4 px-6 sticky top-0 z-50">
       <div className="container mx-auto flex items-center justify-between">
         {/* Logo Area */}
         <div className="font-bold text-xl text-gray-800">

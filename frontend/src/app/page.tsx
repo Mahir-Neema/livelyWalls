@@ -1,4 +1,5 @@
 import PropertyCard from "./components/PropertyCard";
+import FloatingPropertyChat from "./components/FloatingPropertyChat";
 import { Property } from "@/models/Property";
 
 async function getProperties() {
@@ -100,6 +101,7 @@ export default async function Home() {
           </div>
         </div>
       </div>
+      <FloatingPropertyChat />
     </div>
   );
 }

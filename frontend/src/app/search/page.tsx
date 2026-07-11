@@ -1,28 +1,40 @@
 "use client";
+import { Property } from "@/models/Property";
 import { useSearchParams } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import SearchedPropertyCard from "../components/SearchedPropertyCard";
-import Toggle from "../components/Toggle"; // Added Toggle import
-import NearbySuggestions from "../components/NearbySuggestions"; // Added AI component
+import Toggle from "../components/Toggle";
 import { setSearchedProperties } from "@/lib/features/property/propertySlice";
-import { useRouter } from "next/navigation";
 import AIPropertyChat from "../components/AIPropertyChat";
+
+interface PropertySearchFilters {
+  location?: string | null;
+  city?: string | null;
+  propertyType?: string | null;
+  listingType?: string | null;
+  minRent?: number | null;
+  maxRent?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  isBrokerListing?: boolean | null;
+  genderPreference?: string | null;
+}
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://livelywalls.onrender.com";
 
 const SearchPageContent = () => {
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const searchRequestRef = useRef(0);
   const location = searchParams.get("location");
   const listingType = searchParams.get("listingType");
   const searchedProperties =
     useAppSelector((state) => state.property.searchedProperties) || [];
   const [loading, setLoading] = useState(searchedProperties.length === 0);
   const [isNoBroker, setIsNoBroker] = useState(false);
-
-  // AI Suggestions state
-  const [nearbySuggestions, setNearbySuggestions] = useState<string[]>([]);
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [displaySearch, setDisplaySearch] = useState(location || listingType || "");
 
   const filteredProperties = isNoBroker
     ? searchedProperties.filter((property) => !property.isBrokerListing)
@@ -42,22 +54,24 @@ const SearchPageContent = () => {
 
         // console.log("Body:", body);
 
-        const response = await fetch(
-          "https://livelywalls.onrender.com/search",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: body,
-          }
-        );
+        const requestId = ++searchRequestRef.current;
+
+        const response = await fetch(`${API_BASE_URL}/search`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: body,
+        });
 
         if (!response.ok) {
           throw new Error("Failed to fetch properties");
         }
 
         const reponseData = await response.json();
+        if (requestId !== searchRequestRef.current) {
+          return;
+        }
         dispatch(setSearchedProperties(reponseData.data));
         setLoading(false);
       } catch (error) {
@@ -66,38 +80,24 @@ const SearchPageContent = () => {
     };
 
     if (location || listingType) {
+      setDisplaySearch(location || listingType || "");
       fetchSearchedLocations();
     }
   }, [location, listingType]);
 
-  // Fetch AI Suggestions
-  useEffect(() => {
-    const fetchAiSuggestions = async () => {
-      if (!location) return;
+  const buildSearchLabel = (filters: PropertySearchFilters) => {
+    const parts = [];
+    if (filters.bedrooms) parts.push(`${filters.bedrooms}BHK`);
+    if (filters.genderPreference && filters.genderPreference !== "Any") {
+      parts.push(filters.genderPreference);
+    }
+    if (filters.propertyType) parts.push(filters.propertyType);
+    if (filters.listingType) parts.push(filters.listingType);
+    if (filters.location || filters.city) parts.push(`in ${filters.location || filters.city}`);
+    if (filters.maxRent) parts.push(`under ₹${filters.maxRent.toLocaleString()}`);
+    if (filters.isBrokerListing === false) parts.push("no broker");
 
-      setIsAiLoading(true);
-      try {
-        const response = await fetch(
-          `https://livelywalls.onrender.com/ai/nearby-locations?location=${encodeURIComponent(location)}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setNearbySuggestions(data.data || []);
-        }
-      } catch (error) {
-        console.error("Error fetching AI suggestions:", error);
-      } finally {
-        setIsAiLoading(false);
-      }
-    };
-
-    fetchAiSuggestions();
-  }, [location]);
-
-  const handleSuggestionClick = (newLoc: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("location", newLoc);
-    router.push(`/search?${params.toString()}`);
+    return parts.length > 0 ? parts.join(" ") : location || listingType || "properties";
   };
 
   if (loading) {
@@ -114,7 +114,7 @@ const SearchPageContent = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            Explore {location || listingType}
+            Explore {displaySearch || "properties"}
           </h1>
           <p className="text-gray-500 font-medium">
             {filteredProperties.length} handpicked properties found
@@ -144,21 +144,22 @@ const SearchPageContent = () => {
               <p className="text-gray-400 mt-2">Try adjusting your filters or checking nearby areas.</p>
             </div>
           )}
+
         </main>
 
         {/* Right Sidebar for AI Suggestions */}
         <aside className="w-full lg:w-1/4 order-1 lg:order-2">
           <div className="sticky top-24">
             <AIPropertyChat
-              onPropertiesSuggested={(properties) => {
+              onPropertiesSuggested={(
+                properties: Property[],
+                filters: PropertySearchFilters
+              ) => {
+                searchRequestRef.current += 1;
                 dispatch(setSearchedProperties(properties));
+                setDisplaySearch(buildSearchLabel(filters));
                 setLoading(false);
               }}
-            />
-            <NearbySuggestions
-              locations={nearbySuggestions}
-              isLoading={isAiLoading}
-              onSuggestionClick={handleSuggestionClick}
             />
           </div>
         </aside>
