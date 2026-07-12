@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HiSparkles } from "react-icons/hi";
+import { HiSparkles, HiTrash } from "react-icons/hi";
 import { IoSend } from "react-icons/io5";
 import { Property } from "@/models/Property";
 
@@ -38,17 +38,24 @@ interface PropertySearchFilters {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://livelywalls.onrender.com";
+const DEFAULT_ASSISTANT_REPLY =
+  "Tell me what you need, like 2BHK near Bellandur under 45k with no broker.";
 
 function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
   const [message, setMessage] = useState("");
-  const [assistantReply, setAssistantReply] = useState(
-    "Tell me what you need, like 2BHK near Bellandur under 45k with no broker."
-  );
+  const [assistantReply, setAssistantReply] = useState(DEFAULT_ASSISTANT_REPLY);
   const [lastFilters, setLastFilters] = useState<PropertySearchFilters | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const clearChat = () => {
+    setMessage("");
+    setAssistantReply(DEFAULT_ASSISTANT_REPLY);
+    setLastFilters(null);
+    setError("");
+  };
 
   const askAssistant = async () => {
     const trimmedMessage = message.trim();
@@ -94,14 +101,28 @@ function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
 
   return (
     <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 mb-5">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="p-2 bg-pink-50 text-pink-700 rounded-full">
-          <HiSparkles className="w-5 h-5" />
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-pink-50 text-pink-700 rounded-full">
+            <HiSparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">
+              AI Property Chat
+            </h2>
+            <p className="text-xs text-gray-500">Search in natural language</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-sm font-bold text-gray-900">AI Property Chat</h2>
-          <p className="text-xs text-gray-500">Search in natural language</p>
-        </div>
+        <button
+          type="button"
+          onClick={clearChat}
+          disabled={isLoading}
+          className="rounded-full p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Clear AI property chat"
+          title="Clear chat"
+        >
+          <HiTrash className="w-4 h-4" />
+        </button>
       </div>
 
       <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3 mb-3">

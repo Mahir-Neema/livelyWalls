@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HiOutlineSparkles, HiOutlineX } from "react-icons/hi";
+import {
+  HiOutlineSparkles,
+  HiOutlineTrash,
+  HiOutlineX,
+} from "react-icons/hi";
 import { IoSend } from "react-icons/io5";
 import { Property } from "@/models/Property";
 
@@ -104,6 +108,15 @@ function FloatingPropertyChat() {
     setIsOpen(false);
   };
 
+  const clearChat = () => {
+    nextMessageId.current = 1;
+    setMessages(DEFAULT_MESSAGES);
+    setLastFilters(null);
+    setInput("");
+    setIsLoading(false);
+    window.sessionStorage.removeItem(STORAGE_KEY);
+  };
+
   const sendMessage = async () => {
     const message = input.trim();
     if (!message || isLoading) return;
@@ -170,14 +183,26 @@ function FloatingPropertyChat() {
                 <p className="text-xs text-gray-500">Ask for homes directly</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="rounded-full p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-              aria-label="Close AI property chat"
-            >
-              <HiOutlineX className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={clearChat}
+                disabled={isLoading}
+                className="rounded-full p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Clear AI property chat"
+                title="Clear chat"
+              >
+                <HiOutlineTrash className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="rounded-full p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+                aria-label="Close AI property chat"
+              >
+                <HiOutlineX className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <div className="max-h-96 space-y-3 overflow-y-auto bg-gray-50/60 px-4 py-4">
