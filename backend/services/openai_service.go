@@ -27,7 +27,14 @@ type PropertySearchIntent struct {
 	IsVegetarianPreferred *bool    `json:"isVegetarianPreferred"`
 	IsFamilyPreferred     *bool    `json:"isFamilyPreferred"`
 	GenderPreference      *string  `json:"genderPreference"`
+	Furnishing            *string  `json:"furnishing"`
+	SearchSource          *string  `json:"searchSource"`
 	Limit                 *int64   `json:"limit"`
+}
+
+type ChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
 type PropertyChatIntentResponse struct {
@@ -36,7 +43,7 @@ type PropertyChatIntentResponse struct {
 	Filters            PropertySearchIntent `json:"filters"`
 }
 
-func ExtractPropertySearchIntent(ctx context.Context, message string, previousFilters *PropertySearchIntent) (*PropertyChatIntentResponse, error) {
+func ExtractPropertySearchIntent(ctx context.Context, message string, previousFilters *PropertySearchIntent, conversationHistory []ChatMessage) (*PropertyChatIntentResponse, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is not set")
@@ -51,7 +58,7 @@ func ExtractPropertySearchIntent(ctx context.Context, message string, previousFi
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	prompt := buildPropertyIntentPrompt(message, previousFilters)
+	prompt := buildPropertyIntentPrompt(message, previousFilters, conversationHistory)
 	resp, err := client.Responses.New(ctx, responses.ResponseNewParams{
 		Model: openai.ChatModel(model),
 		Input: responses.ResponseNewParamsInputUnion{
@@ -97,7 +104,7 @@ func normalizePropertyIntent(filters *PropertySearchIntent, message string) {
 	}
 }
 
-func buildPropertyIntentPrompt(message string, previousFilters *PropertySearchIntent) string {
+func buildPropertyIntentPrompt(message string, previousFilters *PropertySearchIntent, conversationHistory []ChatMessage) string {
 	previousFilterJSON := "{}"
 	if previousFilters != nil {
 		if jsonData, err := json.Marshal(previousFilters); err == nil {
@@ -105,11 +112,35 @@ func buildPropertyIntentPrompt(message string, previousFilters *PropertySearchIn
 		}
 	}
 
+	historyBlock := ""
+	if len(conversationHistory) > 0 {
+		var lines []string
+		for _, msg := range conversationHistory {
+			role := "User"
+			if msg.Role == "assistant" {
+				role = "Assistant"
+			}
+			lines = append(lines, fmt.Sprintf("%s: %s", role, msg.Content))
+		}
+		historyBlock = "\nConversation so far:\n" + strings.Join(lines, "\n") + "\n"
+	}
+
 	return fmt.Sprintf(`You are the search assistant for SmilingBricks, an Indian rental/property app.
 
 Convert the user's natural-language request into property search filters.
 Return only valid JSON. Do not wrap it in markdown.
 
+IMPORTANT: The user may type with typos, misspellings, abbreviations, or informal shorthand. You MUST intelligently correct and interpret their input before extracting filters. Examples:
+- "vegatarean" → vegetarian
+- "famail" / "femal" → female
+- "karmangala" / "koramangla" → Koramangala
+- "whitefeild" → Whitefield
+- "nobroker" / "no broker" → isBrokerListing=false
+- "2bhk" / "2 bhk" / "2BHK" → bedrooms=2
+- "semi furnish" / "semi-furnished" → furnishing=semi-furnished
+- "wth parking" → amenities include parking
+If the user's message is very unclear or too garbled, set clarifyingQuestion and ask them to clarify.
+%s
 You may receive previous filters from the same chat session.
 - Merge the latest user request with previous filters.
 - Preserve previous filters when the latest request is a refinement like "2BHK", "make it no broker", or "under 60k".
@@ -119,11 +150,15 @@ You may receive previous filters from the same chat session.
 - If the latest user request is only a location or locality name, search broadly for that location.
 - Do not infer listingType as Rent from a location-only request.
 - Do not ask for budget or rent/sale just because the user only gave a location.
+- Use conversation context to understand references like "that area", "same budget", "make it furnished", etc.
+- When the user says "that", "same", "it", refer to the last assistant reply or previous filters to resolve the reference.
 
 Allowed filter values:
 - propertyType: "Flat", "Apartment", "House", "Studio"
 - listingType: "Rent", "Sale", "Flatmate"
 - genderPreference: "Male", "Female", "Any"
+- furnishing: "furnished", "semi-furnished", "unfurnished"
+- searchSource: "platform", "web", "both"
 - rent values must be numbers in INR
 - "flatmate" describes listingType, not propertyType
 - do not infer propertyType from "BHK" or "flatmate"; only set propertyType when the user explicitly says apartment, flat, house, or studio
@@ -133,6 +168,10 @@ Allowed filter values:
 - use isBrokerListing=false for no-broker/direct-owner/owner-only requests
 - use maxRent for phrases like "under 40k"
 - use bedrooms for "1BHK", "2 BHK", etc.
+- use furnishing for "furnished", "semi-furnished", "unfurnished"
+- use searchSource="web" when user says "from web", "from sites", "all sources", "external"
+- use searchSource="platform" when user says "only SmilingBricks", "your platform", "internal only"
+- use searchSource="both" when user says "search everywhere", "all listings", or by default
 - include only fields you can infer confidently; otherwise use null
 - if the request is too vague, set clarifyingQuestion to a short question
 
@@ -154,12 +193,14 @@ JSON shape:
     "isVegetarianPreferred": null,
     "isFamilyPreferred": null,
     "genderPreference": null,
+    "furnishing": null,
+    "searchSource": "both",
     "limit": 10
   }
 }
 
 Previous filters: %s
-Latest user request: %q`, previousFilterJSON, message)
+Latest user request: %q`, historyBlock, previousFilterJSON, message)
 }
 
 func cleanJSONResponse(text string) string {
@@ -199,6 +240,8 @@ func (intent PropertySearchIntent) ToSearchFilters() map[string]interface{} {
 	addString("propertyType", intent.PropertyType)
 	addString("listingType", intent.ListingType)
 	addString("genderPreference", intent.GenderPreference)
+	addString("furnishing", intent.Furnishing)
+	addString("searchSource", intent.SearchSource)
 	addFloat("minRent", intent.MinRent)
 	addFloat("maxRent", intent.MaxRent)
 	addInt("bedrooms", intent.Bedrooms)

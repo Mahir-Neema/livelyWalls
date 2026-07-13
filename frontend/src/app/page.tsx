@@ -1,5 +1,8 @@
+import Link from "next/link";
+import { HiSparkles } from "react-icons/hi";
 import PropertyCard from "./components/PropertyCard";
 import FloatingPropertyChat from "./components/FloatingPropertyChat";
+import ShimmerButton from "./components/ShimmerButton";
 import { Property } from "@/models/Property";
 
 async function getProperties() {
@@ -44,6 +47,18 @@ export default async function Home() {
 
   return (
     <div className="items-center justify-items-center font-[family-name:var(--font-geist-sans)]">
+      <div className="w-full max-w-7xl px-8 pt-6 sm:px-20">
+        <div className="flex justify-center md:justify-end">
+          <Link href="/search?agent=true">
+            <ShimmerButton>
+              <span className="flex items-center gap-2 text-center text-sm font-semibold tracking-tight whitespace-pre-wrap">
+                <HiSparkles className="h-4 w-4" />
+                Search with Agent
+              </span>
+            </ShimmerButton>
+          </Link>
+        </div>
+      </div>
       <div className="text-4xl text-center px-8 py-6">
         Simplifying Home Search for Everyone!
       </div>

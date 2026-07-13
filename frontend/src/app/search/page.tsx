@@ -7,6 +7,7 @@ import SearchedPropertyCard from "../components/SearchedPropertyCard";
 import Toggle from "../components/Toggle";
 import { setSearchedProperties } from "@/lib/features/property/propertySlice";
 import AIPropertyChat from "../components/AIPropertyChat";
+import MobileAgentChat from "../components/MobileAgentChat";
 
 interface PropertySearchFilters {
   location?: string | null;
@@ -28,13 +29,16 @@ const SearchPageContent = () => {
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
   const searchRequestRef = useRef(0);
+  const aiChatRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
   const location = searchParams.get("location");
   const listingType = searchParams.get("listingType");
+  const agentMode = searchParams.get("agent") === "true";
   const searchedProperties =
     useAppSelector((state) => state.property.searchedProperties) || [];
   const [loading, setLoading] = useState(searchedProperties.length === 0);
   const [isNoBroker, setIsNoBroker] = useState(false);
-  const [displaySearch, setDisplaySearch] = useState(location || listingType || "");
+  const [displaySearch, setDisplaySearch] = useState(location || listingType || (agentMode ? "AI Search" : ""));
 
   const filteredProperties = isNoBroker
     ? searchedProperties.filter((property) => !property.isBrokerListing)
@@ -82,8 +86,33 @@ const SearchPageContent = () => {
     if (location || listingType) {
       setDisplaySearch(location || listingType || "");
       fetchSearchedLocations();
+    } else if (agentMode) {
+      fetchTopProperties();
+    } else {
+      setLoading(false);
     }
   }, [location, listingType]);
+
+  const fetchTopProperties = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/properties/top`);
+      if (!response.ok) throw new Error("Failed to fetch top properties");
+      const data = await response.json();
+      dispatch(setSearchedProperties(data.data || []));
+    } catch (error) {
+      console.error("Error fetching top properties:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (agentMode && aiChatRef.current) {
+      setTimeout(() => {
+        aiChatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 300);
+    }
+  }, [agentMode]);
 
   const buildSearchLabel = (filters: PropertySearchFilters) => {
     const parts = [];
@@ -109,62 +138,84 @@ const SearchPageContent = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4">
-      {/* Header section with status and search info */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            Explore {displaySearch || "properties"}
-          </h1>
-          <p className="text-gray-500 font-medium">
-            {filteredProperties.length} handpicked properties found
-          </p>
-        </div>
-
-        <div className="bg-gray-50 px-4 py-2 rounded-2xl flex items-center shadow-sm border border-gray-100 transition-all hover:shadow-md">
-          <Toggle
-            id="no-broker"
-            label="Owners only (No brokerage)"
-            checked={isNoBroker}
-            onChange={() => setIsNoBroker(!isNoBroker)}
+    <>
+      {/* Mobile/Tablet: ChatGPT-style full-screen chat (agent mode only) */}
+      {agentMode && (
+        <div className="lg:hidden">
+          <MobileAgentChat
+            onPropertiesSuggested={(properties, filters) => {
+              searchRequestRef.current += 1;
+              dispatch(setSearchedProperties(properties));
+              setDisplaySearch(buildSearchLabel(filters));
+              setLoading(false);
+            }}
           />
         </div>
-      </div>
+      )}
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Main Content Area */}
-        <main className="w-full lg:w-3/4 flex flex-col items-center order-2 lg:order-1">
-          {filteredProperties.length > 0 ? (
-            filteredProperties.map((property, index) => (
-              <SearchedPropertyCard key={index} property={property} />
-            ))
-          ) : (
-            <div className="text-center py-20 bg-gray-50 rounded-3xl w-full border-2 border-dashed border-gray-200">
-              <p className="text-xl font-semibold text-gray-500">No properties found matching your criteria.</p>
-              <p className="text-gray-400 mt-2">Try adjusting your filters or checking nearby areas.</p>
+      {/* Desktop: sidebar layout OR mobile non-agent layout */}
+      <div className={agentMode ? "hidden lg:block" : ""}>
+        <div ref={topRef} className="max-w-7xl mx-auto p-4">
+          {/* Header section with status and search info */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                Explore {displaySearch || "properties"}
+              </h1>
+              <p className="text-gray-500 font-medium">
+                {filteredProperties.length} handpicked properties found
+              </p>
             </div>
-          )}
 
-        </main>
-
-        {/* Right Sidebar for AI Suggestions */}
-        <aside className="w-full lg:w-1/4 order-1 lg:order-2">
-          <div className="sticky top-24">
-            <AIPropertyChat
-              onPropertiesSuggested={(
-                properties: Property[],
-                filters: PropertySearchFilters
-              ) => {
-                searchRequestRef.current += 1;
-                dispatch(setSearchedProperties(properties));
-                setDisplaySearch(buildSearchLabel(filters));
-                setLoading(false);
-              }}
-            />
+            <div className="bg-gray-50 px-4 py-2 rounded-2xl flex items-center shadow-sm border border-gray-100 transition-all hover:shadow-md">
+              <Toggle
+                id="no-broker"
+                label="Owners only (No brokerage)"
+                checked={isNoBroker}
+                onChange={() => setIsNoBroker(!isNoBroker)}
+              />
+            </div>
           </div>
-        </aside>
+
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Main Content Area */}
+            <main className="w-full lg:w-3/4 flex flex-col items-center order-2 lg:order-1">
+              {filteredProperties.length > 0 ? (
+                filteredProperties.map((property, index) => (
+                  <SearchedPropertyCard key={index} property={property} />
+                ))
+              ) : (
+                <div className="text-center py-20 bg-gray-50 rounded-3xl w-full border-2 border-dashed border-gray-200">
+                  <p className="text-xl font-semibold text-gray-500">No properties found matching your criteria.</p>
+                  <p className="text-gray-400 mt-2">Try adjusting your filters or checking nearby areas.</p>
+                </div>
+              )}
+            </main>
+
+            {/* Right Sidebar for AI Suggestions */}
+            <aside className="w-full lg:w-1/4 order-1 lg:order-2">
+              <div ref={aiChatRef} className="sticky top-24">
+                <AIPropertyChat
+                  autoFocus={agentMode}
+                  onPropertiesSuggested={(
+                    properties: Property[],
+                    filters: PropertySearchFilters
+                  ) => {
+                    searchRequestRef.current += 1;
+                    dispatch(setSearchedProperties(properties));
+                    setDisplaySearch(buildSearchLabel(filters));
+                    setLoading(false);
+                    setTimeout(() => {
+                      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }, 100);
+                  }}
+                />
+              </div>
+            </aside>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

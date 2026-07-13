@@ -26,15 +26,18 @@ func GetNearbyLocations(w http.ResponseWriter, r *http.Request) {
 }
 
 type propertyChatRequest struct {
-	Message         string                         `json:"message"`
-	PreviousFilters *services.PropertySearchIntent `json:"previousFilters,omitempty"`
+	Message            string                         `json:"message"`
+	PreviousFilters    *services.PropertySearchIntent `json:"previousFilters,omitempty"`
+	ConversationHistory []services.ChatMessage         `json:"conversationHistory,omitempty"`
+	SearchSource        string                         `json:"searchSource,omitempty"`
 }
 
 type propertyChatResponse struct {
 	Reply              string                        `json:"reply"`
 	ClarifyingQuestion string                        `json:"clarifyingQuestion,omitempty"`
 	Filters            services.PropertySearchIntent `json:"filters"`
-	Properties         []*models.Property            `json:"properties"`
+	Properties         []models.UnifiedProperty      `json:"properties"`
+	SourceBreakdown    map[string]int                `json:"sourceBreakdown,omitempty"`
 }
 
 func PropertyChat(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +52,7 @@ func PropertyChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := services.ExtractPropertySearchIntent(r.Context(), request.Message, request.PreviousFilters)
+	intent, err := services.ExtractPropertySearchIntent(r.Context(), request.Message, request.PreviousFilters, request.ConversationHistory)
 	if err != nil {
 		utils.Logger.Printf("Error extracting OpenAI property intent: %v", err)
 		utils.WriteErrorResponse(w, "Failed to understand property request", http.StatusInternalServerError)
@@ -57,20 +60,45 @@ func PropertyChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filters := intent.Filters.ToSearchFilters()
-	properties, err := models.SearchProperties(filters, 10)
-	if err != nil {
-		utils.Logger.Printf("Error searching AI property filters: %v", err)
-		utils.WriteErrorResponse(w, "Failed to search properties", http.StatusInternalServerError)
-		return
+	searchSource := "platform"
+	if request.SearchSource != "" {
+		searchSource = request.SearchSource
+	} else if intent.Filters.SearchSource != nil && *intent.Filters.SearchSource != "" {
+		searchSource = *intent.Filters.SearchSource
 	}
-	if properties == nil {
-		properties = []*models.Property{}
+
+	limit := int64(10)
+	if intent.Filters.Limit != nil && *intent.Filters.Limit > 0 {
+		limit = *intent.Filters.Limit
 	}
+	if (searchSource == "both" || searchSource == "web") && limit < 15 {
+		limit = 30
+	}
+
+	var platformResults []*models.Property
+	var crawlerResults []*models.CrawlerProperty
+
+	if searchSource == "platform" || searchSource == "both" {
+		platformResults, err = models.SearchProperties(filters, limit)
+		if err != nil {
+			utils.Logger.Printf("Error searching platform properties: %v", err)
+		}
+	}
+
+	if searchSource == "web" || searchSource == "both" {
+		crawlerResults, err = models.SearchCrawlerProperties(filters, limit)
+		if err != nil {
+			utils.Logger.Printf("Error searching crawler properties: %v", err)
+		}
+	}
+
+	merged := models.MergeAndDeduplicate(platformResults, crawlerResults)
 
 	utils.WriteSuccessResponse(w, propertyChatResponse{
 		Reply:              intent.Reply,
 		ClarifyingQuestion: intent.ClarifyingQuestion,
 		Filters:            intent.Filters,
-		Properties:         properties,
+		Properties:         merged.Properties,
+		SourceBreakdown:    merged.SourceBreakdown,
 	}, http.StatusOK)
 }

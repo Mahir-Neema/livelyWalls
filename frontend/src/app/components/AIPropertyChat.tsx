@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { HiSparkles, HiTrash } from "react-icons/hi";
 import { IoSend } from "react-icons/io5";
 import { Property } from "@/models/Property";
 
 interface AIPropertyChatProps {
+  autoFocus?: boolean;
   onPropertiesSuggested: (
     properties: Property[],
     filters: PropertySearchFilters
   ) => void;
+}
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 interface PropertyChatResponse {
@@ -17,6 +23,7 @@ interface PropertyChatResponse {
   clarifyingQuestion?: string;
   filters: PropertySearchFilters;
   properties: Property[];
+  sourceBreakdown?: Record<string, number>;
 }
 
 interface PropertySearchFilters {
@@ -38,31 +45,76 @@ interface PropertySearchFilters {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://livelywalls.onrender.com";
-const DEFAULT_ASSISTANT_REPLY =
-  "Tell me what you need, like 2BHK near Bellandur under 45k with no broker.";
+const SOURCE_STORAGE_KEY = "smilingBricksSearchSource";
 
-function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
+const EXAMPLE_PROMPTS = [
+  "2BHK in HSR under 50k",
+  "No broker 1BHK in Koramangala",
+  "3BHK with parking under 60k",
+  "Furnished flat near Whitefield",
+  "Flatmate wanted in Indiranagar",
+];
+
+function AIPropertyChat({ autoFocus, onPropertiesSuggested }: AIPropertyChatProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState("");
-  const [assistantReply, setAssistantReply] = useState(DEFAULT_ASSISTANT_REPLY);
   const [lastFilters, setLastFilters] = useState<PropertySearchFilters | null>(
     null
   );
+  const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showExamples, setShowExamples] = useState(true);
+  const [searchSource, setSearchSource] = useState<"both" | "platform" | "web">(() => {
+    try {
+      const stored = window.localStorage.getItem(SOURCE_STORAGE_KEY);
+      if (stored === "both" || stored === "platform" || stored === "web") return stored;
+    } catch {}
+    return "platform";
+  });
+
+  const hasConversation = conversationHistory.length > 0;
+
+  useEffect(() => {
+    if (autoFocus) {
+      setTimeout(() => inputRef.current?.focus(), 400);
+    }
+  }, [autoFocus]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SOURCE_STORAGE_KEY, searchSource);
+    } catch {}
+  }, [searchSource]);
+
+  useEffect(() => {
+    if (conversationHistory.length > 0 && messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [conversationHistory]);
 
   const clearChat = () => {
     setMessage("");
-    setAssistantReply(DEFAULT_ASSISTANT_REPLY);
     setLastFilters(null);
+    setConversationHistory([]);
     setError("");
+    setShowExamples(true);
   };
 
-  const askAssistant = async () => {
-    const trimmedMessage = message.trim();
+  const askAssistant = async (overrideMessage?: string) => {
+    const trimmedMessage = (overrideMessage || message).trim();
     if (!trimmedMessage || isLoading) return;
 
     setIsLoading(true);
     setError("");
+    setShowExamples(false);
+
+    const userMessage: ChatMessage = { role: "user", content: trimmedMessage };
+    setConversationHistory((prev) => [...prev, userMessage]);
+    setMessage("");
 
     try {
       const response = await fetch(`${API_BASE_URL}/ai/property-chat`, {
@@ -73,6 +125,8 @@ function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
         body: JSON.stringify({
           message: trimmedMessage,
           previousFilters: lastFilters,
+          conversationHistory: conversationHistory,
+          searchSource: searchSource,
         }),
       });
 
@@ -83,24 +137,34 @@ function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
       const responseData = await response.json();
       const data = responseData.data as PropertyChatResponse;
 
-      setAssistantReply(
-        data.clarifyingQuestion
-          ? `${data.reply} ${data.clarifyingQuestion}`
-          : data.reply
-      );
+      const replyText = data.clarifyingQuestion
+        ? `${data.reply} ${data.clarifyingQuestion}`
+        : data.reply;
+
+      const assistantMessage: ChatMessage = { role: "assistant", content: replyText };
+
       setLastFilters(data.filters || null);
+      setConversationHistory((prev) => [...prev, assistantMessage]);
       onPropertiesSuggested(data.properties || [], data.filters);
-      setMessage("");
     } catch (err) {
       console.error("AI property chat error:", err);
+      const errorMsg: ChatMessage = { role: "assistant", content: "I could not search with AI right now. Try a normal search." };
+      setConversationHistory((prev) => [...prev, errorMsg]);
       setError("I could not search with AI right now. Try a normal search.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleExampleClick = (example: string) => {
+    setMessage(example);
+    setShowExamples(false);
+    askAssistant(example);
+  };
+
   return (
-    <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 mb-5">
+    <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 mb-5 flex flex-col h-full min-h-[580px]">
+      {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-pink-50 text-pink-700 rounded-full">
@@ -125,12 +189,77 @@ function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
         </button>
       </div>
 
-      <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3 mb-3">
-        {assistantReply}
-      </p>
+      {/* Search source toggle */}
+      <div className="flex gap-1 mb-3">
+        {(["platform", "both", "web"] as const).map((src) => (
+          <button
+            key={src}
+            type="button"
+            onClick={() => setSearchSource(src)}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              searchSource === src
+                ? "bg-pink-700 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {src === "both" ? "All Sources" : src === "platform" ? "SmilingBricks" : "Web"}
+          </button>
+        ))}
+      </div>
 
-      <div className="flex gap-2">
+      {/* Chat messages */}
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto space-y-2 mb-3 min-h-0 max-h-[320px] pr-1">
+        {!hasConversation && !isLoading && (
+          <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3">
+            Tell me what you need, like 2BHK near Bellandur under 45k with no broker.
+          </p>
+        )}
+
+        {conversationHistory.map((msg, i) => (
+          <div
+            key={i}
+            className={`text-sm rounded-xl px-3 py-2 max-w-[90%] ${
+              msg.role === "user"
+                ? "ml-auto bg-pink-700 text-white"
+                : "bg-gray-50 text-gray-700"
+            }`}
+          >
+            {msg.content}
+          </div>
+        ))}
+
+        {isLoading && (
+          <div className="text-sm text-gray-400 bg-gray-50 rounded-xl px-3 py-2 w-fit">
+            Finding matches...
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Example prompts — above the input */}
+      {showExamples && !isLoading && (
+        <div className="mb-3">
+          <p className="text-xs text-gray-400 mb-2 font-medium">Try examples</p>
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLE_PROMPTS.map((example) => (
+              <button
+                key={example}
+                type="button"
+                onClick={() => handleExampleClick(example)}
+                className="px-3 py-1.5 rounded-full text-xs text-gray-600 bg-gray-50 border border-gray-100 hover:bg-pink-50 hover:text-pink-700 hover:border-pink-200 transition-colors text-left"
+              >
+                {example}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="flex gap-2 mt-auto">
         <input
+          ref={inputRef}
           value={message}
           onChange={(event) => setMessage(event.target.value)}
           onKeyDown={(event) => {
@@ -139,22 +268,19 @@ function AIPropertyChat({ onPropertiesSuggested }: AIPropertyChatProps) {
             }
           }}
           placeholder="2BHK in HSR under 50k"
-          className="min-w-0 flex-1 rounded-full border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-100"
+          className="min-w-0 flex-1 rounded-full border border-gray-200 px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-100"
         />
         <button
           type="button"
-          onClick={askAssistant}
+          onClick={() => askAssistant()}
           disabled={isLoading || !message.trim()}
-          className="w-10 h-10 rounded-full bg-pink-700 text-white flex items-center justify-center disabled:bg-gray-300 hover:bg-pink-800 transition-colors"
+          className="w-12 h-12 rounded-full bg-pink-700 text-white flex items-center justify-center disabled:bg-gray-300 hover:bg-pink-800 transition-colors"
           aria-label="Ask AI"
         >
           <IoSend className="w-4 h-4" />
         </button>
       </div>
 
-      {isLoading && (
-        <p className="text-xs text-gray-400 mt-2">Finding matches...</p>
-      )}
       {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
     </section>
   );

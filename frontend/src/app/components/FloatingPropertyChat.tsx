@@ -41,9 +41,15 @@ interface ChatMessage {
   properties?: Property[];
 }
 
+interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://livelywalls.onrender.com";
 const STORAGE_KEY = "smilingBricksFloatingPropertyChat";
+const SOURCE_STORAGE_KEY = "smilingBricksSearchSource";
 const DEFAULT_MESSAGES: ChatMessage[] = [
   {
     id: 0,
@@ -55,6 +61,7 @@ const DEFAULT_MESSAGES: ChatMessage[] = [
 interface StoredChatState {
   messages?: ChatMessage[];
   lastFilters?: PropertySearchFilters | null;
+  conversationHistory?: ConversationMessage[];
 }
 
 function FloatingPropertyChat() {
@@ -65,8 +72,22 @@ function FloatingPropertyChat() {
   const [lastFilters, setLastFilters] = useState<PropertySearchFilters | null>(
     null
   );
+  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(DEFAULT_MESSAGES);
+  const [searchSource, setSearchSource] = useState<"both" | "platform" | "web">(() => {
+    try {
+      const stored = window.localStorage.getItem(SOURCE_STORAGE_KEY);
+      if (stored === "both" || stored === "platform" || stored === "web") return stored;
+    } catch {}
+    return "platform";
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SOURCE_STORAGE_KEY, searchSource);
+    } catch {}
+  }, [searchSource]);
 
   useEffect(() => {
     try {
@@ -80,6 +101,7 @@ function FloatingPropertyChat() {
           Math.max(...parsedChat.messages.map((item) => item.id)) + 1;
       }
       setLastFilters(parsedChat.lastFilters || null);
+      setConversationHistory(parsedChat.conversationHistory || []);
     } catch (error) {
       console.error("Unable to restore floating property chat:", error);
     }
@@ -89,12 +111,12 @@ function FloatingPropertyChat() {
     try {
       window.sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ messages, lastFilters })
+        JSON.stringify({ messages, lastFilters, conversationHistory })
       );
     } catch (error) {
       console.error("Unable to save floating property chat:", error);
     }
-  }, [messages, lastFilters]);
+  }, [messages, lastFilters, conversationHistory]);
 
   const appendMessage = (message: Omit<ChatMessage, "id">) => {
     const id = nextMessageId.current;
@@ -112,6 +134,7 @@ function FloatingPropertyChat() {
     nextMessageId.current = 1;
     setMessages(DEFAULT_MESSAGES);
     setLastFilters(null);
+    setConversationHistory([]);
     setInput("");
     setIsLoading(false);
     window.sessionStorage.removeItem(STORAGE_KEY);
@@ -122,6 +145,7 @@ function FloatingPropertyChat() {
     if (!message || isLoading) return;
 
     appendMessage({ role: "user", text: message });
+    const userConvMsg: ConversationMessage = { role: "user", content: message };
     setInput("");
     setIsLoading(true);
 
@@ -132,8 +156,10 @@ function FloatingPropertyChat() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message,
+          message: message,
           previousFilters: lastFilters,
+          conversationHistory: conversationHistory,
+          searchSource: searchSource,
         }),
       });
 
@@ -148,6 +174,11 @@ function FloatingPropertyChat() {
         : data.reply;
 
       setLastFilters(data.filters || null);
+      setConversationHistory((prev) => [
+        ...prev,
+        userConvMsg,
+        { role: "assistant", content: reply },
+      ]);
       appendMessage({
         role: "assistant",
         text:
@@ -203,6 +234,24 @@ function FloatingPropertyChat() {
                 <HiOutlineX className="h-5 w-5" />
               </button>
             </div>
+          </div>
+
+          {/* Search source toggle */}
+          <div className="flex gap-1 px-4 py-2 border-b border-gray-100 bg-white">
+            {(["platform", "both", "web"] as const).map((src) => (
+              <button
+                key={src}
+                type="button"
+                onClick={() => setSearchSource(src)}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
+                  searchSource === src
+                    ? "bg-pink-700 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {src === "both" ? "All" : src === "platform" ? "SmilingBricks" : "Web"}
+              </button>
+            ))}
           </div>
 
           <div className="max-h-96 space-y-3 overflow-y-auto bg-gray-50/60 px-4 py-4">

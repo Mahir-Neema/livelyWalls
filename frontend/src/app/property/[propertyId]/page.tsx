@@ -75,7 +75,7 @@ function PropertyDetails() {
             <span className="px-3 py-1.5 bg-white/95 backdrop-blur-sm text-gray-800 text-xs font-semibold rounded-md shadow-sm border border-gray-100">
               {propertyData.isBrokerListing ? "Broker Meta" : "Direct Owner"}
             </span>
-            {propertyData.views > 20 && (
+            {(propertyData.views ?? 0) > 20 && (
               <span className="px-3 py-1.5 bg-pink-600/95 backdrop-blur-sm text-white text-xs font-semibold rounded-md shadow-sm flex items-center">
                 <HiOutlineSparkles className="w-3 h-3 mr-1" />
                 Popular
@@ -207,7 +207,7 @@ function PropertyDetails() {
                 </div>
 
                 <div className="space-y-4">
-                  {propertyData.link?.length > 0 ? (
+                  {propertyData.link && propertyData.link.length > 0 ? (
                     /^\+?\d{10,15}$/.test(propertyData.link) ? (
                       <div className="space-y-3">
                         <div className="text-center py-3 bg-gray-50 rounded-xl border border-gray-200">
@@ -269,7 +269,7 @@ function PropertyDetails() {
           <p className="text-xl font-bold text-gray-900">₹{propertyData.rent.toLocaleString()}</p>
         </div>
         <a
-          href={/^\+?\d{10,15}$/.test(propertyData.link) ? `tel:${propertyData.link}` : propertyData.link}
+          href={propertyData.link && /^\+?\d{10,15}$/.test(propertyData.link) ? `tel:${propertyData.link}` : (propertyData.link || "#")}
           className="bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg active:scale-95 transition-transform"
         >
           Contact
