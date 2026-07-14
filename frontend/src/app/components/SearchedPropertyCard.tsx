@@ -48,10 +48,16 @@ function SearchedPropertyCard({ property }: PropertyCardProps) {
         {/* Source badge */}
         {sourceLabel && (
           <div
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isPlatform && property.sourceUrl) {
+                window.open(property.sourceUrl, "_blank", "noopener,noreferrer");
+              }
+            }}
             className={`absolute top-2 left-2 px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md backdrop-blur-md ${
               isPlatform
                 ? "bg-purple-600/80 text-white"
-                : "bg-orange-500/80 text-white"
+                : "bg-orange-500/80 text-white cursor-pointer hover:bg-orange-600/90 transition-colors"
             }`}
           >
             {sourceLabel}

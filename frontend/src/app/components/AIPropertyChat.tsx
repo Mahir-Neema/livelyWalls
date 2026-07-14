@@ -96,6 +96,16 @@ function AIPropertyChat({ autoFocus, onPropertiesSuggested }: AIPropertyChatProp
     }
   }, [conversationHistory]);
 
+  // Re-fetch results when source filter changes (if there's a conversation)
+  useEffect(() => {
+    if (conversationHistory.length > 0 && lastFilters) {
+      const lastUserMsg = [...conversationHistory].reverse().find(m => m.role === "user");
+      if (lastUserMsg) {
+        askAssistant(lastUserMsg.content, true);
+      }
+    }
+  }, [searchSource]);
+
   const clearChat = () => {
     setMessage("");
     setLastFilters(null);
@@ -104,7 +114,7 @@ function AIPropertyChat({ autoFocus, onPropertiesSuggested }: AIPropertyChatProp
     setShowExamples(true);
   };
 
-  const askAssistant = async (overrideMessage?: string) => {
+  const askAssistant = async (overrideMessage?: string, isSourceRefetch = false) => {
     const trimmedMessage = (overrideMessage || message).trim();
     if (!trimmedMessage || isLoading) return;
 
@@ -113,7 +123,9 @@ function AIPropertyChat({ autoFocus, onPropertiesSuggested }: AIPropertyChatProp
     setShowExamples(false);
 
     const userMessage: ChatMessage = { role: "user", content: trimmedMessage };
-    setConversationHistory((prev) => [...prev, userMessage]);
+    if (!isSourceRefetch) {
+      setConversationHistory((prev) => [...prev, userMessage]);
+    }
     setMessage("");
 
     try {
@@ -143,8 +155,21 @@ function AIPropertyChat({ autoFocus, onPropertiesSuggested }: AIPropertyChatProp
 
       const assistantMessage: ChatMessage = { role: "assistant", content: replyText };
 
-      setLastFilters(data.filters || null);
-      setConversationHistory((prev) => [...prev, assistantMessage]);
+      if (isSourceRefetch) {
+        setConversationHistory((prev) => {
+          const updated = [...prev];
+          const lastIdx = updated.length - 1;
+          if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
+            updated[lastIdx] = assistantMessage;
+          } else {
+            updated.push(assistantMessage);
+          }
+          return updated;
+        });
+      } else {
+        setLastFilters(data.filters || null);
+        setConversationHistory((prev) => [...prev, assistantMessage]);
+      }
       onPropertiesSuggested(data.properties || [], data.filters);
     } catch (err) {
       console.error("AI property chat error:", err);

@@ -231,6 +231,15 @@ function PropertyDetails() {
                         Visit Source Listing
                       </a>
                     )
+                  ) : propertyData.sourceUrl ? (
+                    <a
+                      href={propertyData.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center bg-orange-500 text-white font-semibold py-3 rounded-xl hover:bg-orange-600 transition-colors"
+                    >
+                      View on {propertyData.source === "facebook_marketplace" ? "Facebook Marketplace" : propertyData.source || "Source"}
+                    </a>
                   ) : (
                     <button disabled className="w-full bg-gray-100 text-gray-400 font-semibold py-3 rounded-xl cursor-not-allowed">
                       Contact Info Unavailable
@@ -268,12 +277,27 @@ function PropertyDetails() {
           <p className="text-xs text-gray-500">Rent per month</p>
           <p className="text-xl font-bold text-gray-900">₹{propertyData.rent.toLocaleString()}</p>
         </div>
-        <a
-          href={propertyData.link && /^\+?\d{10,15}$/.test(propertyData.link) ? `tel:${propertyData.link}` : (propertyData.link || "#")}
-          className="bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg active:scale-95 transition-transform"
-        >
-          Contact
-        </a>
+        {propertyData.link && /^\+?\d{10,15}$/.test(propertyData.link) ? (
+          <a
+            href={`tel:${propertyData.link}`}
+            className="bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg active:scale-95 transition-transform"
+          >
+            Contact
+          </a>
+        ) : propertyData.sourceUrl ? (
+          <a
+            href={propertyData.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-orange-500 text-white font-semibold px-6 py-2.5 rounded-lg active:scale-95 transition-transform"
+          >
+            View on Source
+          </a>
+        ) : (
+          <button disabled className="bg-gray-100 text-gray-400 font-semibold px-6 py-2.5 rounded-lg cursor-not-allowed">
+            Contact
+          </button>
+        )}
       </div>
     </div>
   );

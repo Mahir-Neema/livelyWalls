@@ -19,6 +19,7 @@ type UnifiedProperty struct {
 	Furnishing           string     `json:"furnishing"`
 	GenderPreference     string     `json:"genderPreference"`
 	IsVegetarianPreferred bool      `json:"isVegetarianPreferred"`
+	IsFamilyPreferred    bool       `json:"isFamilyPreferred"`
 	IsBrokerListing      bool       `json:"isBrokerListing"`
 	IsAvailable          bool       `json:"isAvailable"`
 	Amenities            []string   `json:"amenities"`
@@ -44,6 +45,7 @@ func FromPlatformProperty(p *Property) UnifiedProperty {
 		Furnishing:           "",
 		GenderPreference:     p.GenderPreference,
 		IsVegetarianPreferred: p.IsVegetarianPreferred,
+		IsFamilyPreferred:    p.IsFamilyPreferred,
 		IsBrokerListing:      p.IsBrokerListing,
 		IsAvailable:          p.IsAvailable,
 		Amenities:            p.Amenities,
@@ -61,20 +63,26 @@ func FromCrawlerProperty(p *CrawlerProperty) UnifiedProperty {
 		title = p.Location
 	}
 
+	bedrooms := p.Bedrooms
+	if bedrooms == 0 {
+		bedrooms = p.BHK
+	}
+
 	return UnifiedProperty{
 		ID:                   p.ID.Hex(),
 		Title:                title,
 		Description:          p.Description,
 		Location:             p.Location,
 		Rent:                 p.Rent,
-		Bedrooms:             p.BHK,
-		Bathrooms:            0,
+		Bedrooms:             bedrooms,
+		Bathrooms:            p.Bathrooms,
 		PropertyType:         p.Type,
 		ListingType:          "Rent",
 		Furnishing:           p.Furnishing,
 		GenderPreference:     p.GenderPreference,
-		IsVegetarianPreferred: p.VegetarianPreferred,
-		IsBrokerListing:      p.IsBrokerage,
+		IsVegetarianPreferred: p.IsVegetarianPreferred,
+		IsFamilyPreferred:    p.IsFamilyPreferred,
+		IsBrokerListing:      p.IsBrokerListing,
 		IsAvailable:          p.IsActive,
 		Amenities:            p.Amenities,
 		Photos:               p.Images,

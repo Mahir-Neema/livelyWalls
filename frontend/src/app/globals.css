@@ -20,38 +20,4 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Shimmer Button */
-.shimmer-button {
-  position: relative;
-  overflow: hidden;
-}
 
-.shimmer-button-border {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.6) 25%,
-    rgba(255, 255, 255, 0.9) 50%,
-    rgba(255, 255, 255, 0.6) 75%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: shimmer-slide 2.5s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes shimmer-slide {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}

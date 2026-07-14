@@ -72,7 +72,7 @@ func PropertyChat(w http.ResponseWriter, r *http.Request) {
 		limit = *intent.Filters.Limit
 	}
 	if (searchSource == "both" || searchSource == "web") && limit < 15 {
-		limit = 30
+		limit = 50
 	}
 
 	var platformResults []*models.Property

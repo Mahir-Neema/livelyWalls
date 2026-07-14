@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { HiSparkles } from "react-icons/hi";
 import PropertyCard from "./components/PropertyCard";
-import FloatingPropertyChat from "./components/FloatingPropertyChat";
 import ShimmerButton from "./components/ShimmerButton";
 import { Property } from "@/models/Property";
 
@@ -116,7 +115,6 @@ export default async function Home() {
           </div>
         </div>
       </div>
-      <FloatingPropertyChat />
     </div>
   );
 }

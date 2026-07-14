@@ -12,26 +12,29 @@ import (
 )
 
 type CrawlerProperty struct {
-	ID                  primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	Title               string             `bson:"title" json:"title"`
-	Description         string             `bson:"description" json:"description"`
-	Location            string             `bson:"location" json:"location"`
-	Rent                int                `bson:"rent" json:"rent"`
-	BHK                 int                `bson:"bhk" json:"bhk"`
-	Type                string             `bson:"type" json:"type"`
-	Furnishing          string             `bson:"furnishing" json:"furnishing"`
-	GenderPreference    string             `bson:"genderPreference" json:"genderPreference"`
-	VegetarianPreferred bool               `bson:"vegetarianPreferred" json:"vegetarianPreferred"`
-	IsBrokerage         bool               `bson:"isBrokerage" json:"isBrokerage"`
-	IsActive            bool               `bson:"isActive" json:"isActive"`
-	Amenities           []string           `bson:"amenities" json:"amenities"`
-	Images              []string           `bson:"images" json:"images"`
-	Deposit             int                `bson:"deposit" json:"deposit"`
-	Source              string             `bson:"source" json:"source"`
-	SourceID            string             `bson:"sourceId" json:"sourceId"`
-	SourceURL           string             `bson:"sourceUrl" json:"sourceUrl"`
-	CrawledAt           time.Time          `bson:"crawledAt" json:"crawledAt"`
-	CreatedAt           time.Time          `bson:"createdAt" json:"createdAt"`
+	ID                   primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+	Title                string             `bson:"title" json:"title"`
+	Description          string             `bson:"description" json:"description"`
+	Location             string             `bson:"location" json:"location"`
+	Rent                 int                `bson:"rent" json:"rent"`
+	BHK                  int                `bson:"bhk" json:"bhk"`
+	Bedrooms             int                `bson:"bedrooms" json:"bedrooms"`
+	Bathrooms            int                `bson:"bathrooms" json:"bathrooms"`
+	Type                 string             `bson:"type" json:"type"`
+	Furnishing           string             `bson:"furnishing" json:"furnishing"`
+	GenderPreference     string             `bson:"genderPreference" json:"genderPreference"`
+	IsVegetarianPreferred bool              `bson:"isVegetarianPreferred" json:"isVegetarianPreferred"`
+	IsFamilyPreferred    bool               `bson:"isFamilyPreferred" json:"isFamilyPreferred"`
+	IsBrokerListing      bool               `bson:"isBrokerListing" json:"isBrokerListing"`
+	IsActive             bool               `bson:"isActive" json:"isActive"`
+	Amenities            []string           `bson:"amenities" json:"amenities"`
+	Images               []string           `bson:"images" json:"images"`
+	Deposit              int                `bson:"deposit" json:"deposit"`
+	Source               string             `bson:"source" json:"source"`
+	SourceID             string             `bson:"sourceId" json:"sourceId"`
+	SourceURL            string             `bson:"sourceUrl" json:"sourceUrl"`
+	CrawledAt            time.Time          `bson:"crawledAt" json:"crawledAt"`
+	CreatedAt            time.Time          `bson:"createdAt" json:"createdAt"`
 }
 
 func GetCrawlerPropertyCollection() *mongo.Collection {
@@ -78,14 +81,14 @@ func SearchCrawlerProperties(filters map[string]interface{}, limit int64) ([]*Cr
 
 	if isBrokerListing, ok := filters["isBrokerListing"].(bool); ok {
 		if isBrokerListing {
-			matchStage["isBrokerage"] = true
+			matchStage["isBrokerListing"] = true
 		} else {
-			matchStage["isBrokerage"] = bson.M{"$ne": true}
+			matchStage["isBrokerListing"] = bson.M{"$ne": true}
 		}
 	}
 
 	if isVegetarianPreferred, ok := filters["isVegetarianPreferred"].(bool); ok {
-		matchStage["vegetarianPreferred"] = isVegetarianPreferred
+		matchStage["isVegetarianPreferred"] = isVegetarianPreferred
 	}
 
 	if genderPreference, ok := filters["genderPreference"].(string); ok && genderPreference != "" {
