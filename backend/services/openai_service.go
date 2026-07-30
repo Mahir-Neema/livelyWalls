@@ -10,7 +10,6 @@ import (
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
-	"github.com/openai/openai-go/v3/responses"
 )
 
 type PropertySearchIntent struct {
@@ -54,24 +53,31 @@ func ExtractPropertySearchIntent(ctx context.Context, message string, previousFi
 		model = "gpt-4.1-mini"
 	}
 
-	client := openai.NewClient(option.WithAPIKey(apiKey))
+	clientOptions := []option.RequestOption{option.WithAPIKey(apiKey)}
+	if baseURL := strings.TrimSpace(os.Getenv("OPENAI_BASE_URL")); baseURL != "" {
+		clientOptions = append(clientOptions, option.WithBaseURL(baseURL))
+	}
+	client := openai.NewClient(clientOptions...)
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
 	prompt := buildPropertyIntentPrompt(message, previousFilters, conversationHistory)
-	resp, err := client.Responses.New(ctx, responses.ResponseNewParams{
-		Model: openai.ChatModel(model),
-		Input: responses.ResponseNewParamsInputUnion{
-			OfString: openai.String(prompt),
+	chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.UserMessage(prompt),
 		},
+		Model: openai.ChatModel(model),
 	})
 	if err != nil {
 		return nil, err
 	}
+	if len(chatCompletion.Choices) == 0 {
+		return nil, fmt.Errorf("property intent provider returned no choices")
+	}
 
 	var parsed PropertyChatIntentResponse
-	if err := json.Unmarshal([]byte(cleanJSONResponse(resp.OutputText())), &parsed); err != nil {
-		return nil, fmt.Errorf("failed to parse OpenAI property intent: %w", err)
+	if err := json.Unmarshal([]byte(cleanJSONResponse(chatCompletion.Choices[0].Message.Content)), &parsed); err != nil {
+		return nil, fmt.Errorf("failed to parse property intent provider response: %w", err)
 	}
 
 	if parsed.Reply == "" {
