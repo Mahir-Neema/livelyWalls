@@ -104,7 +104,7 @@ func SearchCrawlerProperties(filters map[string]interface{}, limit int64) ([]*Cr
 	}
 
 	findOptions := options.Find().
-		SetSort(bson.M{"crawledAt": -1}).
+		SetSort(bson.M{"createdAt": -1}).
 		SetLimit(limit)
 
 	cursor, err := collection.Find(ctx, matchStage, findOptions)

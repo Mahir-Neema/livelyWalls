@@ -5,7 +5,9 @@ import (
 	"backend/services"
 	"backend/utils"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 )
 
 func GetNearbyLocations(w http.ResponseWriter, r *http.Request) {
@@ -52,53 +54,62 @@ func PropertyChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := services.ExtractPropertySearchIntent(r.Context(), request.Message, request.PreviousFilters, request.ConversationHistory)
+	searchCallback := func(filters map[string]interface{}, searchSource string, limit int64) (int, string, interface{}) {
+		var platformResults []*models.Property
+		var crawlerResults []*models.CrawlerProperty
+		var err error
+
+		if searchSource == "platform" || searchSource == "both" {
+			platformResults, err = models.SearchProperties(filters, limit)
+			if err != nil {
+				utils.Logger.Printf("Error searching platform properties: %v", err)
+			}
+		}
+
+		if searchSource == "web" || searchSource == "both" {
+			crawlerResults, err = models.SearchCrawlerProperties(filters, limit)
+			if err != nil {
+				utils.Logger.Printf("Error searching crawler properties: %v", err)
+			}
+		}
+
+		merged := models.MergeAndDeduplicate(platformResults, crawlerResults)
+		summary := fmt.Sprintf("Found %d properties across sources.", len(merged.Properties))
+		
+		if len(merged.Properties) > 0 {
+			var details []string
+			for i, p := range merged.Properties {
+				if i >= 3 {
+					break // Only summarize top 3 to LLM
+				}
+				details = append(details, fmt.Sprintf("- %s (Rent: %d, Type: %s, Bedrooms: %d, Location: %s)", p.Title, p.Rent, p.PropertyType, p.Bedrooms, p.Location))
+			}
+			summary += "\nTop matches:\n" + strings.Join(details, "\n")
+		}
+
+		return len(merged.Properties), summary, merged
+	}
+
+	intent, rawProps, err := services.RunPropertySearchAgent(r.Context(), request.Message, request.PreviousFilters, request.ConversationHistory, request.SearchSource, searchCallback)
 	if err != nil {
-		utils.Logger.Printf("Error extracting OpenAI property intent: %v", err)
+		utils.Logger.Printf("Error running property search agent: %v", err)
 		utils.WriteErrorResponse(w, "Failed to understand property request", http.StatusInternalServerError)
 		return
 	}
 
-	filters := intent.Filters.ToSearchFilters()
-	searchSource := "platform"
-	if request.SearchSource != "" {
-		searchSource = request.SearchSource
-	} else if intent.Filters.SearchSource != nil && *intent.Filters.SearchSource != "" {
-		searchSource = *intent.Filters.SearchSource
-	}
-
-	limit := int64(10)
-	if intent.Filters.Limit != nil && *intent.Filters.Limit > 0 {
-		limit = *intent.Filters.Limit
-	}
-	if (searchSource == "both" || searchSource == "web") && limit < 15 {
-		limit = 50
-	}
-
-	var platformResults []*models.Property
-	var crawlerResults []*models.CrawlerProperty
-
-	if searchSource == "platform" || searchSource == "both" {
-		platformResults, err = models.SearchProperties(filters, limit)
-		if err != nil {
-			utils.Logger.Printf("Error searching platform properties: %v", err)
+	var finalMerged models.MergedProperties
+	if rawProps != nil {
+		if mp, ok := rawProps.(models.MergedProperties); ok {
+			finalMerged = mp
 		}
 	}
 
-	if searchSource == "web" || searchSource == "both" {
-		crawlerResults, err = models.SearchCrawlerProperties(filters, limit)
-		if err != nil {
-			utils.Logger.Printf("Error searching crawler properties: %v", err)
-		}
-	}
-
-	merged := models.MergeAndDeduplicate(platformResults, crawlerResults)
-
+	// In case the agent didn't search but just replied, return empty or default
 	utils.WriteSuccessResponse(w, propertyChatResponse{
 		Reply:              intent.Reply,
 		ClarifyingQuestion: intent.ClarifyingQuestion,
 		Filters:            intent.Filters,
-		Properties:         merged.Properties,
-		SourceBreakdown:    merged.SourceBreakdown,
+		Properties:         finalMerged.Properties,
+		SourceBreakdown:    finalMerged.SourceBreakdown,
 	}, http.StatusOK)
 }

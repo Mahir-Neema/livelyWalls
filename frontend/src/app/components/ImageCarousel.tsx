@@ -34,6 +34,10 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ slides, options, classNam
                 src={src}
                 alt={`Slide ${index + 1}`}
                 className={`w-full ${className || "h-64"} object-cover`}
+                onError={(e) => {
+                  e.currentTarget.src = "/example1.jpeg";
+                  e.currentTarget.onerror = null;
+                }}
               />
             </div>
           ))}

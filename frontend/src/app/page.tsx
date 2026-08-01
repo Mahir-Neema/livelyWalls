@@ -46,17 +46,15 @@ export default async function Home() {
 
   return (
     <div className="items-center justify-items-center font-[family-name:var(--font-geist-sans)]">
-      <div className="w-full max-w-7xl px-8 pt-6 sm:px-20">
-        <div className="flex justify-center md:justify-end">
-          <Link href="/search?agent=true">
-            <ShimmerButton>
-              <span className="flex items-center gap-2 text-center text-sm font-semibold tracking-tight whitespace-pre-wrap">
-                <HiSparkles className="h-4 w-4" />
-                Search with Agent
-              </span>
-            </ShimmerButton>
-          </Link>
-        </div>
+      <div className="fixed bottom-8 right-8 z-50">
+        <Link href="/search?agent=true">
+          <ShimmerButton>
+            <span className="flex items-center gap-2 text-center text-sm font-semibold tracking-tight whitespace-pre-wrap">
+              <HiSparkles className="h-4 w-4" />
+              Search with Agent
+            </span>
+          </ShimmerButton>
+        </Link>
       </div>
       <div className="text-4xl text-center px-8 py-6">
         Simplifying Home Search for Everyone!

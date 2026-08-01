@@ -1,16 +1,42 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
+	"github.com/openai/openai-go/v3/shared"
 )
+
+type loggingRoundTripper struct{}
+
+func (l loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	var bodyBytes []byte
+	if req.Body != nil {
+		bodyBytes, _ = ioutil.ReadAll(req.Body)
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	}
+	fmt.Printf("--- REQUEST ---\n%s\n\n", string(bodyBytes))
+	
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	
+	respBytes, _ := ioutil.ReadAll(resp.Body)
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(respBytes))
+	fmt.Printf("--- RESPONSE ---\nStatus: %d\nBody: %s\n\n", resp.StatusCode, string(respBytes))
+	
+	return resp, nil
+}
 
 type PropertySearchIntent struct {
 	Location              *string  `json:"location"`
@@ -42,10 +68,20 @@ type PropertyChatIntentResponse struct {
 	Filters            PropertySearchIntent `json:"filters"`
 }
 
-func ExtractPropertySearchIntent(ctx context.Context, message string, previousFilters *PropertySearchIntent, conversationHistory []ChatMessage) (*PropertyChatIntentResponse, error) {
+// SearchAgentCallback defines how the agent queries the database.
+type SearchAgentCallback func(filters map[string]interface{}, searchSource string, limit int64) (count int, summary string, rawProperties interface{})
+
+func RunPropertySearchAgent(
+	ctx context.Context,
+	message string,
+	previousFilters *PropertySearchIntent,
+	conversationHistory []ChatMessage,
+	userSearchSource string,
+	searchCallback SearchAgentCallback,
+) (*PropertyChatIntentResponse, interface{}, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
-		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is not set")
+		return nil, nil, fmt.Errorf("OPENAI_API_KEY environment variable is not set")
 	}
 
 	model := os.Getenv("OPENAI_PROPERTY_CHAT_MODEL")
@@ -57,39 +93,165 @@ func ExtractPropertySearchIntent(ctx context.Context, message string, previousFi
 	if baseURL := strings.TrimSpace(os.Getenv("OPENAI_BASE_URL")); baseURL != "" {
 		clientOptions = append(clientOptions, option.WithBaseURL(baseURL))
 	}
+	customClient := &http.Client{
+		Transport: loggingRoundTripper{},
+	}
+	clientOptions = append(clientOptions, option.WithHTTPClient(customClient))
 	client := openai.NewClient(clientOptions...)
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second) // Increased timeout for multi-turn
 	defer cancel()
 
-	prompt := buildPropertyIntentPrompt(message, previousFilters, conversationHistory)
-	chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.UserMessage(prompt),
-		},
-		Model: openai.ChatModel(model),
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(chatCompletion.Choices) == 0 {
-		return nil, fmt.Errorf("property intent provider returned no choices")
+	prompt := buildPropertyAgentPrompt(previousFilters, conversationHistory)
+
+	messages := []openai.ChatCompletionMessageParamUnion{
+		openai.SystemMessage(prompt),
+		openai.UserMessage(message),
 	}
 
-	var parsed PropertyChatIntentResponse
-	if err := json.Unmarshal([]byte(cleanJSONResponse(chatCompletion.Choices[0].Message.Content)), &parsed); err != nil {
-		return nil, fmt.Errorf("failed to parse property intent provider response: %w", err)
+	tools := []openai.ChatCompletionToolUnionParam{
+		openai.ChatCompletionFunctionTool(shared.FunctionDefinitionParam{
+			Name:        "search_database",
+			Description: openai.String("Search the database for matching properties. Call this to check inventory."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"location":              map[string]interface{}{"type": "string"},
+					"city":                  map[string]interface{}{"type": "string"},
+					"propertyType":          map[string]interface{}{"type": "string", "enum": []string{"Flat", "Apartment", "House", "Studio"}},
+					"listingType":           map[string]interface{}{"type": "string", "enum": []string{"Rent", "Sale", "Flatmate"}},
+					"minRent":               map[string]interface{}{"type": "number"},
+					"maxRent":               map[string]interface{}{"type": "number"},
+					"bedrooms":              map[string]interface{}{"type": "integer"},
+					"bathrooms":             map[string]interface{}{"type": "integer"},
+					"isAvailable":           map[string]interface{}{"type": "boolean"},
+					"isBrokerListing":       map[string]interface{}{"type": "boolean"},
+					"isVegetarianPreferred": map[string]interface{}{"type": "boolean"},
+					"isFamilyPreferred":     map[string]interface{}{"type": "boolean"},
+					"genderPreference":      map[string]interface{}{"type": "string", "enum": []string{"Male", "Female", "Any"}},
+					"furnishing":            map[string]interface{}{"type": "string", "enum": []string{"furnished", "semi-furnished", "unfurnished"}},
+					"searchSource":          map[string]interface{}{"type": "string", "enum": []string{"platform", "web", "both"}},
+					"limit":                 map[string]interface{}{"type": "integer"},
+				},
+			},
+		}),
+		openai.ChatCompletionFunctionTool(shared.FunctionDefinitionParam{
+			Name:        "final_reply",
+			Description: openai.String("Provide the final reply to the user. MUST be called to end the conversation. Call this after searching or if the user question is clarifying."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"reply":              map[string]interface{}{"type": "string", "description": "The conversational reply to the user."},
+					"clarifyingQuestion": map[string]interface{}{"type": "string", "description": "Any question needed if the input is too vague."},
+					"filters": map[string]interface{}{
+						"type": "object",
+						"description": "The final filters applied. Use this to update the UI.",
+						"properties": map[string]interface{}{
+							"location":              map[string]interface{}{"type": "string"},
+							"city":                  map[string]interface{}{"type": "string"},
+							"propertyType":          map[string]interface{}{"type": "string"},
+							"listingType":           map[string]interface{}{"type": "string"},
+							"minRent":               map[string]interface{}{"type": "number"},
+							"maxRent":               map[string]interface{}{"type": "number"},
+							"bedrooms":              map[string]interface{}{"type": "integer"},
+							"bathrooms":             map[string]interface{}{"type": "integer"},
+							"isAvailable":           map[string]interface{}{"type": "boolean"},
+							"isBrokerListing":       map[string]interface{}{"type": "boolean"},
+							"isVegetarianPreferred": map[string]interface{}{"type": "boolean"},
+							"isFamilyPreferred":     map[string]interface{}{"type": "boolean"},
+							"genderPreference":      map[string]interface{}{"type": "string"},
+							"furnishing":            map[string]interface{}{"type": "string"},
+							"searchSource":          map[string]interface{}{"type": "string"},
+							"limit":                 map[string]interface{}{"type": "integer"},
+						},
+					},
+				},
+				"required": []string{"reply", "filters"},
+			},
+		}),
 	}
 
-	if parsed.Reply == "" {
-		parsed.Reply = "I found a few filters from your request and searched matching properties."
-	}
-	if parsed.Filters.Limit == nil {
-		defaultLimit := int64(10)
-		parsed.Filters.Limit = &defaultLimit
-	}
-	normalizePropertyIntent(&parsed.Filters, message)
+	var rawProperties interface{}
+	maxTurns := 4
 
-	return &parsed, nil
+	for i := 0; i < maxTurns; i++ {
+		chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+			Messages: messages,
+			Model:    model,
+			Tools:    tools,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("property agent completion error: %w", err)
+		}
+
+		if len(chatCompletion.Choices) == 0 {
+			return nil, nil, fmt.Errorf("property agent returned no choices")
+		}
+
+		choice := chatCompletion.Choices[0]
+		
+		// DO NOT append choice.Message.ToParam() here because of Gemini thought_signature issues in OpenAI Go SDK
+
+		// Check for tool calls
+		if len(choice.Message.ToolCalls) == 0 {
+			// If no tools called, we must just return what the agent said as a fallback.
+			return &PropertyChatIntentResponse{
+				Reply:   choice.Message.Content,
+				Filters: PropertySearchIntent{},
+			}, rawProperties, nil
+		}
+
+		var finalReply *PropertyChatIntentResponse
+
+		for _, toolCall := range choice.Message.ToolCalls {
+			if toolCall.Function.Name == "search_database" {
+				var intent PropertySearchIntent
+				_ = json.Unmarshal([]byte(toolCall.Function.Arguments), &intent)
+				
+				normalizePropertyIntent(&intent, message)
+				
+				searchSource := "platform"
+				if userSearchSource != "" {
+					searchSource = userSearchSource
+				} else if intent.SearchSource != nil && *intent.SearchSource != "" {
+					searchSource = *intent.SearchSource
+				}
+				limit := int64(10)
+				if intent.Limit != nil && *intent.Limit > 0 {
+					limit = *intent.Limit
+				}
+				if (searchSource == "both" || searchSource == "web") && limit < 15 {
+					limit = 50
+				}
+
+				count, summary, props := searchCallback(intent.ToSearchFilters(), searchSource, limit)
+				if count > 0 {
+					rawProperties = props // Keep the latest successful results
+				}
+
+				toolResult := fmt.Sprintf("System Tool 'search_database' Result: Found %d properties.\nSummary:\n%s\nNow, either call 'search_database' again with relaxed filters (e.g. increase maxRent) or call 'final_reply'.", count, summary)
+				
+				// Workaround: Append a UserMessage instead of ToolMessage to avoid Gemini 400 Bad Request
+				messages = append(messages, openai.UserMessage(toolResult))
+			} else if toolCall.Function.Name == "final_reply" {
+				var replyData PropertyChatIntentResponse
+				if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &replyData); err == nil {
+					normalizePropertyIntent(&replyData.Filters, message)
+					finalReply = &replyData
+				}
+			}
+		}
+
+		// If final_reply was called, we're done.
+		if finalReply != nil {
+			if finalReply.Filters.Limit == nil {
+				defaultLimit := int64(10)
+				finalReply.Filters.Limit = &defaultLimit
+			}
+			return finalReply, rawProperties, nil
+		}
+	}
+
+	return nil, nil, fmt.Errorf("property agent exceeded max turns")
 }
 
 func normalizePropertyIntent(filters *PropertySearchIntent, message string) {
@@ -110,7 +272,7 @@ func normalizePropertyIntent(filters *PropertySearchIntent, message string) {
 	}
 }
 
-func buildPropertyIntentPrompt(message string, previousFilters *PropertySearchIntent, conversationHistory []ChatMessage) string {
+func buildPropertyAgentPrompt(previousFilters *PropertySearchIntent, conversationHistory []ChatMessage) string {
 	previousFilterJSON := "{}"
 	if previousFilters != nil {
 		if jsonData, err := json.Marshal(previousFilters); err == nil {
@@ -133,88 +295,27 @@ func buildPropertyIntentPrompt(message string, previousFilters *PropertySearchIn
 
 	return fmt.Sprintf(`You are the search assistant for SmilingBricks, an Indian rental/property app.
 
-Convert the user's natural-language request into property search filters.
-Return only valid JSON. Do not wrap it in markdown.
+Your goal is to find properties matching the user's request. You have access to tools:
+1. 'search_database': Use this to query properties. You MUST use this to verify inventory before replying.
+2. 'final_reply': Use this to end the conversation and provide the response to the user.
 
-IMPORTANT: The user may type with typos, misspellings, abbreviations, or informal shorthand. You MUST intelligently correct and interpret their input before extracting filters. Examples:
-- "vegatarean" → vegetarian
-- "famail" / "femal" → female
-- "karmangala" / "koramangla" → Koramangala
-- "whitefeild" → Whitefield
-- "nobroker" / "no broker" → isBrokerListing=false
-- "2bhk" / "2 bhk" / "2BHK" → bedrooms=2
-- "semi furnish" / "semi-furnished" → furnishing=semi-furnished
-- "wth parking" → amenities include parking
-If the user's message is very unclear or too garbled, set clarifyingQuestion and ask them to clarify.
-%s
-You may receive previous filters from the same chat session.
+IMPORTANT INSTRUCTIONS:
+- If 'search_database' returns 0 results, DO NOT immediately give up. You MUST automatically relax the filters (e.g., increase maxRent by 10-15%%, drop 'furnishing' or 'bedrooms') and call 'search_database' again.
+- You can retry 'search_database' up to 2 times to find properties. 
+- If you still find nothing after relaxing filters, or if you found good matches, call 'final_reply'.
+- In 'final_reply', explain to the user what you found. If you had to relax the budget or other filters, mention it politely (e.g. "I couldn't find a 2BHK under 40k, but I found some for 42k").
+- Handle typos and abbreviations (e.g., "vegatarean" -> vegetarian, "2bhk" -> bedrooms: 2).
+
+Filter Details:
+- If request adds male/female without explicitly mentioning rent/sale, set listingType to "Flatmate".
+- Use isBrokerListing=false for no-broker/owner-only requests.
+- Use maxRent for phrases like "under 40k".
+- searchSource: "web" (from web/sites), "platform" (SmilingBricks only), "both" (default).
+
+Previous filters from this session: %s
 - Merge the latest user request with previous filters.
-- Preserve previous filters when the latest request is a refinement like "2BHK", "make it no broker", or "under 60k".
-- The latest user request overrides previous filters when it clearly changes a field.
-- Clear a previous filter only if the user explicitly says "any", "remove", "doesn't matter", or similar for that field.
-- If no previous filter is useful, ignore it.
-- If the latest user request is only a location or locality name, search broadly for that location.
-- Do not infer listingType as Rent from a location-only request.
-- Do not ask for budget or rent/sale just because the user only gave a location.
-- Use conversation context to understand references like "that area", "same budget", "make it furnished", etc.
-- When the user says "that", "same", "it", refer to the last assistant reply or previous filters to resolve the reference.
-
-Allowed filter values:
-- propertyType: "Flat", "Apartment", "House", "Studio"
-- listingType: "Rent", "Sale", "Flatmate"
-- genderPreference: "Male", "Female", "Any"
-- furnishing: "furnished", "semi-furnished", "unfurnished"
-- searchSource: "platform", "web", "both"
-- rent values must be numbers in INR
-- "flatmate" describes listingType, not propertyType
-- do not infer propertyType from "BHK" or "flatmate"; only set propertyType when the user explicitly says apartment, flat, house, or studio
-- only set listingType when the user explicitly says rent, sale, flatmate, roommate, room, or sharing
-- if the latest request adds only "male" or "female" without explicitly saying rent or sale, prefer listingType "Flatmate" because gender preference is normally flatmate inventory
-- do not preserve a previous listingType of "Rent" when the latest request adds only a male/female preference
-- use isBrokerListing=false for no-broker/direct-owner/owner-only requests
-- use maxRent for phrases like "under 40k"
-- use bedrooms for "1BHK", "2 BHK", etc.
-- use furnishing for "furnished", "semi-furnished", "unfurnished"
-- use searchSource="web" when user says "from web", "from sites", "all sources", "external"
-- use searchSource="platform" when user says "only SmilingBricks", "your platform", "internal only"
-- use searchSource="both" when user says "search everywhere", "all listings", or by default
-- include only fields you can infer confidently; otherwise use null
-- if the request is too vague, set clarifyingQuestion to a short question
-
-JSON shape:
-{
-  "reply": "short friendly explanation of what you searched for",
-  "clarifyingQuestion": "",
-  "filters": {
-    "location": null,
-    "city": null,
-    "propertyType": null,
-    "listingType": null,
-    "minRent": null,
-    "maxRent": null,
-    "bedrooms": null,
-    "bathrooms": null,
-    "isAvailable": true,
-    "isBrokerListing": null,
-    "isVegetarianPreferred": null,
-    "isFamilyPreferred": null,
-    "genderPreference": null,
-    "furnishing": null,
-    "searchSource": "both",
-    "limit": 10
-  }
-}
-
-Previous filters: %s
-Latest user request: %q`, historyBlock, previousFilterJSON, message)
-}
-
-func cleanJSONResponse(text string) string {
-	cleaned := strings.TrimSpace(text)
-	cleaned = strings.TrimPrefix(cleaned, "```json")
-	cleaned = strings.TrimPrefix(cleaned, "```")
-	cleaned = strings.TrimSuffix(cleaned, "```")
-	return strings.TrimSpace(cleaned)
+- Clear a previous filter if user says "any", "remove", "doesn't matter".
+%s`, previousFilterJSON, historyBlock)
 }
 
 func (intent PropertySearchIntent) ToSearchFilters() map[string]interface{} {
