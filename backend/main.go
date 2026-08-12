@@ -5,6 +5,7 @@ import (
 	"backend/routes"
 	"backend/services"
 	"backend/utils"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -29,6 +30,18 @@ func main() {
 
 	routes.RegisterRoutes(router)
 	router.HandleFunc("/ws", services.HandleConnections)
+	router.HandleFunc("/ai-debug", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		env := map[string]interface{}{
+			"OPENAI_API_KEY_set":       os.Getenv("OPENAI_API_KEY") != "",
+			"OPENAI_API_KEY_len":       len(os.Getenv("OPENAI_API_KEY")),
+			"OPENAI_BASE_URL":          os.Getenv("OPENAI_BASE_URL"),
+			"OPENAI_PROPERTY_CHAT_MODEL": os.Getenv("OPENAI_PROPERTY_CHAT_MODEL"),
+			"REDIS_ADDR_set":           os.Getenv("REDIS_ADDR") != "",
+			"MONGO_URI_set":            os.Getenv("MONGO_URI") != "",
+		}
+		json.NewEncoder(w).Encode(env)
+	})
 
 	allowedURI := os.Getenv("ALLOWED_URL")
 	if allowedURI == "" {
