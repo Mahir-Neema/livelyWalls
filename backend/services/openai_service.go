@@ -1,19 +1,16 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"time"
-
-	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
-	"github.com/openai/openai-go/v3/shared"
 )
-
-
 
 type PropertySearchIntent struct {
 	Location              *string  `json:"location"`
@@ -48,6 +45,23 @@ type PropertyChatIntentResponse struct {
 // SearchAgentCallback defines how the agent queries the database.
 type SearchAgentCallback func(filters map[string]interface{}, searchSource string, limit int64) (count int, summary string, rawProperties interface{})
 
+type rawMessage map[string]interface{}
+
+type geminiToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type geminiResponse struct {
+	Choices []struct {
+		Message rawMessage `json:"message"`
+	} `json:"choices"`
+}
+
 func RunPropertySearchAgent(
 	ctx context.Context,
 	message string,
@@ -66,123 +80,173 @@ func RunPropertySearchAgent(
 		model = "gpt-4.1-mini"
 	}
 
-	clientOptions := []option.RequestOption{option.WithAPIKey(apiKey)}
-	if baseURL := strings.TrimSpace(os.Getenv("OPENAI_BASE_URL")); baseURL != "" {
-		clientOptions = append(clientOptions, option.WithBaseURL(baseURL))
+	baseURL := strings.TrimSpace(os.Getenv("OPENAI_BASE_URL"))
+	if baseURL == "" {
+		baseURL = "https://api.openai.com/v1/"
 	}
+	if !strings.HasSuffix(baseURL, "/") {
+		baseURL += "/"
+	}
+	apiURL := baseURL + "chat/completions"
 
-	client := openai.NewClient(clientOptions...)
-	ctx, cancel := context.WithTimeout(ctx, 45*time.Second) // Increased timeout for multi-turn
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 
 	prompt := buildPropertyAgentPrompt(previousFilters, conversationHistory)
 
-	messages := []openai.ChatCompletionMessageParamUnion{
-		openai.SystemMessage(prompt),
-		openai.UserMessage(message),
+	// We use raw maps to preserve any custom properties (like Gemini's thought_signature) returned by the API
+	messages := []rawMessage{
+		{"role": "system", "content": prompt},
+		{"role": "user", "content": message},
 	}
 
-	tools := []openai.ChatCompletionToolUnionParam{
-		openai.ChatCompletionFunctionTool(shared.FunctionDefinitionParam{
-			Name:        "search_database",
-			Description: openai.String("Search the database for matching properties. Call this to check inventory."),
-			Parameters: shared.FunctionParameters{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"location":              map[string]interface{}{"type": "string"},
-					"city":                  map[string]interface{}{"type": "string"},
-					"propertyType":          map[string]interface{}{"type": "string", "enum": []string{"Flat", "Apartment", "House", "Studio"}},
-					"listingType":           map[string]interface{}{"type": "string", "enum": []string{"Rent", "Sale", "Flatmate"}},
-					"minRent":               map[string]interface{}{"type": "number"},
-					"maxRent":               map[string]interface{}{"type": "number"},
-					"bedrooms":              map[string]interface{}{"type": "integer"},
-					"bathrooms":             map[string]interface{}{"type": "integer"},
-					"isAvailable":           map[string]interface{}{"type": "boolean"},
-					"isBrokerListing":       map[string]interface{}{"type": "boolean"},
-					"isVegetarianPreferred": map[string]interface{}{"type": "boolean"},
-					"isFamilyPreferred":     map[string]interface{}{"type": "boolean"},
-					"genderPreference":      map[string]interface{}{"type": "string", "enum": []string{"Male", "Female", "Any"}},
-					"furnishing":            map[string]interface{}{"type": "string", "enum": []string{"furnished", "semi-furnished", "unfurnished"}},
-					"searchSource":          map[string]interface{}{"type": "string", "enum": []string{"platform", "web", "both"}},
-					"limit":                 map[string]interface{}{"type": "integer"},
-				},
-			},
-		}),
-		openai.ChatCompletionFunctionTool(shared.FunctionDefinitionParam{
-			Name:        "final_reply",
-			Description: openai.String("Provide the final reply to the user. MUST be called to end the conversation. Call this after searching or if the user question is clarifying."),
-			Parameters: shared.FunctionParameters{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"reply":              map[string]interface{}{"type": "string", "description": "The conversational reply to the user."},
-					"clarifyingQuestion": map[string]interface{}{"type": "string", "description": "Any question needed if the input is too vague."},
-					"filters": map[string]interface{}{
-						"type": "object",
-						"description": "The final filters applied. Use this to update the UI.",
-						"properties": map[string]interface{}{
-							"location":              map[string]interface{}{"type": "string"},
-							"city":                  map[string]interface{}{"type": "string"},
-							"propertyType":          map[string]interface{}{"type": "string"},
-							"listingType":           map[string]interface{}{"type": "string"},
-							"minRent":               map[string]interface{}{"type": "number"},
-							"maxRent":               map[string]interface{}{"type": "number"},
-							"bedrooms":              map[string]interface{}{"type": "integer"},
-							"bathrooms":             map[string]interface{}{"type": "integer"},
-							"isAvailable":           map[string]interface{}{"type": "boolean"},
-							"isBrokerListing":       map[string]interface{}{"type": "boolean"},
-							"isVegetarianPreferred": map[string]interface{}{"type": "boolean"},
-							"isFamilyPreferred":     map[string]interface{}{"type": "boolean"},
-							"genderPreference":      map[string]interface{}{"type": "string"},
-							"furnishing":            map[string]interface{}{"type": "string"},
-							"searchSource":          map[string]interface{}{"type": "string"},
-							"limit":                 map[string]interface{}{"type": "integer"},
-						},
+	tools := []map[string]interface{}{
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "search_database",
+				"description": "Search the database for matching properties. Call this to check inventory.",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"location":              map[string]interface{}{"type": "string"},
+						"city":                  map[string]interface{}{"type": "string"},
+						"propertyType":          map[string]interface{}{"type": "string", "enum": []string{"Flat", "Apartment", "House", "Studio"}},
+						"listingType":           map[string]interface{}{"type": "string", "enum": []string{"Rent", "Sale", "Flatmate"}},
+						"minRent":               map[string]interface{}{"type": "number"},
+						"maxRent":               map[string]interface{}{"type": "number"},
+						"bedrooms":              map[string]interface{}{"type": "integer"},
+						"bathrooms":             map[string]interface{}{"type": "integer"},
+						"isAvailable":           map[string]interface{}{"type": "boolean"},
+						"isBrokerListing":       map[string]interface{}{"type": "boolean"},
+						"isVegetarianPreferred": map[string]interface{}{"type": "boolean"},
+						"isFamilyPreferred":     map[string]interface{}{"type": "boolean"},
+						"genderPreference":      map[string]interface{}{"type": "string", "enum": []string{"Male", "Female", "Any"}},
+						"furnishing":            map[string]interface{}{"type": "string", "enum": []string{"furnished", "semi-furnished", "unfurnished"}},
+						"searchSource":          map[string]interface{}{"type": "string", "enum": []string{"platform", "web", "both"}},
+						"limit":                 map[string]interface{}{"type": "integer"},
 					},
 				},
-				"required": []string{"reply", "filters"},
 			},
-		}),
+		},
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "final_reply",
+				"description": "Provide the final reply to the user. MUST be called to end the conversation. Call this after searching or if the user question is clarifying.",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"reply":              map[string]interface{}{"type": "string", "description": "The conversational reply to the user."},
+						"clarifyingQuestion": map[string]interface{}{"type": "string", "description": "Any question needed if the input is too vague."},
+						"filters": map[string]interface{}{
+							"type":        "object",
+							"description": "The final filters applied. Use this to update the UI.",
+							"properties": map[string]interface{}{
+								"location":              map[string]interface{}{"type": "string"},
+								"city":                  map[string]interface{}{"type": "string"},
+								"propertyType":          map[string]interface{}{"type": "string"},
+								"listingType":           map[string]interface{}{"type": "string"},
+								"minRent":               map[string]interface{}{"type": "number"},
+								"maxRent":               map[string]interface{}{"type": "number"},
+								"bedrooms":              map[string]interface{}{"type": "integer"},
+								"bathrooms":             map[string]interface{}{"type": "integer"},
+								"isAvailable":           map[string]interface{}{"type": "boolean"},
+								"isBrokerListing":       map[string]interface{}{"type": "boolean"},
+								"isVegetarianPreferred": map[string]interface{}{"type": "boolean"},
+								"isFamilyPreferred":     map[string]interface{}{"type": "boolean"},
+								"genderPreference":      map[string]interface{}{"type": "string"},
+								"furnishing":            map[string]interface{}{"type": "string"},
+								"searchSource":          map[string]interface{}{"type": "string"},
+								"limit":                 map[string]interface{}{"type": "integer"},
+							},
+						},
+					},
+					"required": []string{"reply", "filters"},
+				},
+			},
+		},
 	}
 
 	var rawProperties interface{}
 	maxTurns := 4
 
 	for i := 0; i < maxTurns; i++ {
-		chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-			Messages: messages,
-			Model:    model,
-			Tools:    tools,
-		})
+		payload := map[string]interface{}{
+			"model":    model,
+			"messages": messages,
+			"tools":    tools,
+		}
+
+		payloadBytes, err := json.Marshal(payload)
 		if err != nil {
-			return nil, nil, fmt.Errorf("property agent completion error: %w", err)
+			return nil, nil, fmt.Errorf("failed to marshal request payload: %w", err)
 		}
 
-		if len(chatCompletion.Choices) == 0 {
-			return nil, nil, fmt.Errorf("property agent returned no choices")
+		req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(payloadBytes))
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create http request: %w", err)
 		}
 
-		choice := chatCompletion.Choices[0]
-		
-		// DO NOT append choice.Message.ToParam() here because of Gemini thought_signature issues in OpenAI Go SDK
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, nil, fmt.Errorf("gemini api http request failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			return nil, nil, fmt.Errorf("gemini api returned status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var geminiResp geminiResponse
+		if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
+			return nil, nil, fmt.Errorf("failed to decode gemini response: %w", err)
+		}
+
+		if len(geminiResp.Choices) == 0 {
+			return nil, nil, fmt.Errorf("gemini returned no choices")
+		}
+
+		choiceMsg := geminiResp.Choices[0].Message
+
+		// Extract tool calls if present
+		var toolCalls []geminiToolCall
+		if toolCallsRaw, ok := choiceMsg["tool_calls"]; ok && toolCallsRaw != nil {
+			if bytesRaw, err := json.Marshal(toolCallsRaw); err == nil {
+				_ = json.Unmarshal(bytesRaw, &toolCalls)
+			}
+		}
+
+		// Append the assistant's message intact (with thought_signature preserved) to the message list
+		messages = append(messages, choiceMsg)
 
 		// Check for tool calls
-		if len(choice.Message.ToolCalls) == 0 {
+		if len(toolCalls) == 0 {
 			// If no tools called, we must just return what the agent said as a fallback.
+			var contentStr string
+			if contentRaw, ok := choiceMsg["content"]; ok && contentRaw != nil {
+				contentStr, _ = contentRaw.(string)
+			}
 			return &PropertyChatIntentResponse{
-				Reply:   choice.Message.Content,
+				Reply:   contentStr,
 				Filters: PropertySearchIntent{},
 			}, rawProperties, nil
 		}
 
 		var finalReply *PropertyChatIntentResponse
 
-		for _, toolCall := range choice.Message.ToolCalls {
+		for _, toolCall := range toolCalls {
 			if toolCall.Function.Name == "search_database" {
 				var intent PropertySearchIntent
 				_ = json.Unmarshal([]byte(toolCall.Function.Arguments), &intent)
-				
+
 				normalizePropertyIntent(&intent, message)
-				
+
 				searchSource := "platform"
 				if userSearchSource != "" {
 					searchSource = userSearchSource
@@ -199,13 +263,17 @@ func RunPropertySearchAgent(
 
 				count, summary, props := searchCallback(intent.ToSearchFilters(), searchSource, limit)
 				if count > 0 {
-					rawProperties = props // Keep the latest successful results
+					rawProperties = props
 				}
 
 				toolResult := fmt.Sprintf("System Tool 'search_database' Result: Found %d properties.\nSummary:\n%s\nNow, either call 'search_database' again with relaxed filters (e.g. increase maxRent) or call 'final_reply'.", count, summary)
-				
-				// Workaround: Append a UserMessage instead of ToolMessage to avoid Gemini 400 Bad Request
-				messages = append(messages, openai.UserMessage(toolResult))
+
+				toolMessage := rawMessage{
+					"role":         "tool",
+					"tool_call_id": toolCall.ID,
+					"content":      toolResult,
+				}
+				messages = append(messages, toolMessage)
 			} else if toolCall.Function.Name == "final_reply" {
 				var replyData PropertyChatIntentResponse
 				if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &replyData); err == nil {
