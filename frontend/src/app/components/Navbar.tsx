@@ -20,6 +20,9 @@ const placeHolderLocations = [
   "Indiranagar",
 ];
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://livelywalls.onrender.com";
+
 function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -69,7 +72,7 @@ function Navbar() {
         }
 
         const response = await fetch(
-          "https://livelywalls.onrender.com/search/popular-places"
+          `${API_BASE_URL}/search/popular-places`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch trending locations");
@@ -183,7 +186,7 @@ function Navbar() {
   };
 
   return (
-    <nav className="bg-gray-100 py-4 px-6 sticky top-0 z-10">
+    <nav className="bg-gray-100 py-4 px-6 sticky top-0 z-50">
       <div className="container mx-auto flex items-center justify-between">
         {/* Logo Area */}
         <div className="font-bold text-xl text-gray-800">

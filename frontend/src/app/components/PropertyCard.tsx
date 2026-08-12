@@ -53,6 +53,10 @@ function PropertyCard({ property }: PropertyCardProps) {
           }
           alt="Property"
           className="w-60 h-40 object-cover block filter brightness-75 transition-all duration-300 group-hover:brightness-100 group-hover:opacity-100 transform scale-100"
+          onError={(e) => {
+            e.currentTarget.src = "example3.png";
+            e.currentTarget.onerror = null;
+          }}
         />
         {/* Top Text Overlay */}
         <div className="absolute top-2 left-2 px-3 py-1 rounded-3xl bg-gray-900 bg-opacity-75 text-white group-hover:opacity-0 transition-opacity duration-300">

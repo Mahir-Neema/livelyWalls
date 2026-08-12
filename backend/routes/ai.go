@@ -9,4 +9,5 @@ import (
 func RegisterAIRoutes(r *mux.Router) {
 	aiRouter := r.PathPrefix("/ai").Subrouter()
 	aiRouter.HandleFunc("/nearby-locations", controllers.GetNearbyLocations).Methods("GET")
+	aiRouter.HandleFunc("/property-chat", controllers.PropertyChat).Methods("POST")
 }

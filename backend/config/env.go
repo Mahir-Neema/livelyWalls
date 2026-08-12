@@ -26,4 +26,10 @@ func LoadEnv() {
 	if os.Getenv("REDIS_ADDR") == "" {
 		log.Println("Warning: REDIS_ADDR environment variable not set. Caching will be disabled.")
 	}
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		log.Println("Warning: OPENAI_API_KEY environment variable not set. AI property chat will be disabled.")
+	}
+	if os.Getenv("OPENAI_BASE_URL") == "" {
+		log.Println("OPENAI_BASE_URL not set. AI property chat will use the default OpenAI API URL.")
+	}
 }
