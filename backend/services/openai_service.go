@@ -1,12 +1,9 @@
 package services
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -16,27 +13,7 @@ import (
 	"github.com/openai/openai-go/v3/shared"
 )
 
-type loggingRoundTripper struct{}
 
-func (l loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	var bodyBytes []byte
-	if req.Body != nil {
-		bodyBytes, _ = ioutil.ReadAll(req.Body)
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	}
-	fmt.Printf("--- REQUEST ---\n%s\n\n", string(bodyBytes))
-	
-	resp, err := http.DefaultTransport.RoundTrip(req)
-	if err != nil {
-		return nil, err
-	}
-	
-	respBytes, _ := ioutil.ReadAll(resp.Body)
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(respBytes))
-	fmt.Printf("--- RESPONSE ---\nStatus: %d\nBody: %s\n\n", resp.StatusCode, string(respBytes))
-	
-	return resp, nil
-}
 
 type PropertySearchIntent struct {
 	Location              *string  `json:"location"`
@@ -93,10 +70,7 @@ func RunPropertySearchAgent(
 	if baseURL := strings.TrimSpace(os.Getenv("OPENAI_BASE_URL")); baseURL != "" {
 		clientOptions = append(clientOptions, option.WithBaseURL(baseURL))
 	}
-	customClient := &http.Client{
-		Transport: loggingRoundTripper{},
-	}
-	clientOptions = append(clientOptions, option.WithHTTPClient(customClient))
+
 	client := openai.NewClient(clientOptions...)
 	ctx, cancel := context.WithTimeout(ctx, 45*time.Second) // Increased timeout for multi-turn
 	defer cancel()
@@ -282,15 +256,38 @@ func buildPropertyAgentPrompt(previousFilters *PropertySearchIntent, conversatio
 
 	historyBlock := ""
 	if len(conversationHistory) > 0 {
-		var lines []string
+		// Sanitize: remove error messages and deduplicate consecutive same-role messages
+		var cleaned []ChatMessage
 		for _, msg := range conversationHistory {
-			role := "User"
-			if msg.Role == "assistant" {
-				role = "Assistant"
+			// Skip error/fallback messages
+			if strings.Contains(msg.Content, "I could not search with AI right now") {
+				continue
 			}
-			lines = append(lines, fmt.Sprintf("%s: %s", role, msg.Content))
+			// Skip consecutive duplicates (same role as previous)
+			if len(cleaned) > 0 && cleaned[len(cleaned)-1].Role == msg.Role {
+				// Keep the latest one by replacing
+				cleaned[len(cleaned)-1] = msg
+				continue
+			}
+			cleaned = append(cleaned, msg)
 		}
-		historyBlock = "\nConversation so far:\n" + strings.Join(lines, "\n") + "\n"
+
+		// Cap to the last 6 messages to avoid bloated payloads
+		if len(cleaned) > 6 {
+			cleaned = cleaned[len(cleaned)-6:]
+		}
+
+		if len(cleaned) > 0 {
+			var lines []string
+			for _, msg := range cleaned {
+				role := "User"
+				if msg.Role == "assistant" {
+					role = "Assistant"
+				}
+				lines = append(lines, fmt.Sprintf("%s: %s", role, msg.Content))
+			}
+			historyBlock = "\nConversation so far:\n" + strings.Join(lines, "\n") + "\n"
+		}
 	}
 
 	return fmt.Sprintf(`You are the search assistant for SmilingBricks, an Indian rental/property app.
