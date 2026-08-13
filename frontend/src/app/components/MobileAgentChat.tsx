@@ -102,11 +102,57 @@ function MobileAgentChat({ onPropertiesSuggested }: MobileAgentChatProps) {
     }
   }, [messages]);
 
+  // Persist chat state to sessionStorage whenever it changes
+  useEffect(() => {
+    if (messages.length > 0) {
+      try {
+        sessionStorage.setItem("mobile_ai_messages", JSON.stringify(messages));
+        sessionStorage.setItem("mobile_ai_history", JSON.stringify(conversationHistory));
+        if (lastFilters) {
+          sessionStorage.setItem("mobile_ai_filters", JSON.stringify(lastFilters));
+        }
+        sessionStorage.setItem("ai_search_url_params", window.location.search);
+        sessionStorage.setItem("ai_active", "true");
+      } catch (e) {}
+    }
+  }, [messages, conversationHistory, lastFilters]);
+
+  // Restore chat state on mount if the query params match
+  useEffect(() => {
+    try {
+      const active = sessionStorage.getItem("ai_active") === "true";
+      const cachedParams = sessionStorage.getItem("ai_search_url_params");
+      if (active && cachedParams === window.location.search) {
+        const cachedMessages = sessionStorage.getItem("mobile_ai_messages");
+        const cachedHistory = sessionStorage.getItem("mobile_ai_history");
+        const cachedFilters = sessionStorage.getItem("mobile_ai_filters");
+        if (cachedMessages) {
+          setMessages(JSON.parse(cachedMessages));
+        }
+        if (cachedHistory) {
+          setConversationHistory(JSON.parse(cachedHistory));
+        }
+        if (cachedFilters) {
+          setLastFilters(JSON.parse(cachedFilters));
+        }
+      }
+    } catch (e) {}
+  }, []);
+
   const clearChat = () => {
     setMessage("");
     setMessages([]);
     setLastFilters(null);
     setConversationHistory([]);
+    try {
+      sessionStorage.removeItem("mobile_ai_messages");
+      sessionStorage.removeItem("mobile_ai_history");
+      sessionStorage.removeItem("mobile_ai_filters");
+      sessionStorage.removeItem("ai_search_url_params");
+      sessionStorage.removeItem("ai_active");
+      sessionStorage.removeItem("ai_properties");
+      sessionStorage.removeItem("ai_filters");
+    } catch (e) {}
   };
 
   const askAssistant = async (overrideMessage?: string) => {
