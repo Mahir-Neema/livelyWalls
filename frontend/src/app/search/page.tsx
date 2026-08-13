@@ -45,6 +45,25 @@ const SearchPageContent = () => {
     : searchedProperties;
 
   useEffect(() => {
+    // Check if there is cached AI search data to restore on mount (e.g. back navigation)
+    try {
+      const isAiActive = sessionStorage.getItem("ai_active") === "true";
+      const cachedProperties = sessionStorage.getItem("ai_properties");
+      const cachedFilters = sessionStorage.getItem("ai_filters");
+      const cachedParams = sessionStorage.getItem("ai_search_url_params");
+
+      if (isAiActive && cachedProperties && cachedFilters && cachedParams === window.location.search) {
+        const parsedProps = JSON.parse(cachedProperties);
+        const parsedFilters = JSON.parse(cachedFilters);
+        dispatch(setSearchedProperties(parsedProps));
+        setDisplaySearch(buildSearchLabel(parsedFilters));
+        setLoading(false);
+        return;
+      }
+    } catch (e) {
+      console.error("Error restoring search cache:", e);
+    }
+
     const fetchSearchedLocations = async () => {
       try {
         if (!location && !listingType) {
@@ -55,8 +74,6 @@ const SearchPageContent = () => {
         var body = location
           ? JSON.stringify({ location: location })
           : JSON.stringify({ listingType: listingType });
-
-        // console.log("Body:", body);
 
         const requestId = ++searchRequestRef.current;
 
@@ -148,6 +165,12 @@ const SearchPageContent = () => {
               dispatch(setSearchedProperties(properties));
               setDisplaySearch(buildSearchLabel(filters));
               setLoading(false);
+              try {
+                sessionStorage.setItem("ai_properties", JSON.stringify(properties));
+                sessionStorage.setItem("ai_filters", JSON.stringify(filters));
+                sessionStorage.setItem("ai_active", "true");
+                sessionStorage.setItem("ai_search_url_params", window.location.search);
+              } catch (e) {}
             }}
           />
         </div>
@@ -205,6 +228,12 @@ const SearchPageContent = () => {
                     dispatch(setSearchedProperties(properties));
                     setDisplaySearch(buildSearchLabel(filters));
                     setLoading(false);
+                    try {
+                      sessionStorage.setItem("ai_properties", JSON.stringify(properties));
+                      sessionStorage.setItem("ai_filters", JSON.stringify(filters));
+                      sessionStorage.setItem("ai_active", "true");
+                      sessionStorage.setItem("ai_search_url_params", window.location.search);
+                    } catch (e) {}
                     setTimeout(() => {
                       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }, 100);

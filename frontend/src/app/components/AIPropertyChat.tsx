@@ -96,6 +96,39 @@ function AIPropertyChat({ autoFocus, onPropertiesSuggested }: AIPropertyChatProp
     }
   }, [conversationHistory]);
 
+  // Persist chat state to sessionStorage whenever it changes
+  useEffect(() => {
+    if (conversationHistory.length > 0) {
+      try {
+        sessionStorage.setItem("ai_chat_messages", JSON.stringify(conversationHistory));
+        if (lastFilters) {
+          sessionStorage.setItem("ai_chat_filters", JSON.stringify(lastFilters));
+        }
+        sessionStorage.setItem("ai_search_url_params", window.location.search);
+        sessionStorage.setItem("ai_active", "true");
+      } catch {}
+    }
+  }, [conversationHistory, lastFilters]);
+
+  // Restore chat state on mount if the query params match
+  useEffect(() => {
+    try {
+      const active = sessionStorage.getItem("ai_active") === "true";
+      const cachedParams = sessionStorage.getItem("ai_search_url_params");
+      if (active && cachedParams === window.location.search) {
+        const cachedMessages = sessionStorage.getItem("ai_chat_messages");
+        const cachedFilters = sessionStorage.getItem("ai_chat_filters");
+        if (cachedMessages) {
+          setConversationHistory(JSON.parse(cachedMessages));
+          setShowExamples(false);
+        }
+        if (cachedFilters) {
+          setLastFilters(JSON.parse(cachedFilters));
+        }
+      }
+    } catch {}
+  }, []);
+
   // Re-fetch results when source filter changes (if there's a conversation)
   useEffect(() => {
     if (conversationHistory.length > 0 && lastFilters) {
@@ -112,6 +145,14 @@ function AIPropertyChat({ autoFocus, onPropertiesSuggested }: AIPropertyChatProp
     setConversationHistory([]);
     setError("");
     setShowExamples(true);
+    try {
+      sessionStorage.removeItem("ai_chat_messages");
+      sessionStorage.removeItem("ai_chat_filters");
+      sessionStorage.removeItem("ai_search_url_params");
+      sessionStorage.removeItem("ai_active");
+      sessionStorage.removeItem("ai_properties");
+      sessionStorage.removeItem("ai_filters");
+    } catch {}
   };
 
   const askAssistant = async (overrideMessage?: string, isSourceRefetch = false) => {
